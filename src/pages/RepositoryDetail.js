@@ -230,7 +230,7 @@ const RepositoryDetail = () => {
   }, []);
   
   // Define fetchData first so it can be referenced by handleWebSocketMessage
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (restoreRunningScan = false) => {
     try {
       const [repoData, vulnData, patternData, branchData, scanData] = await Promise.all([
         api.getRepository(id),
@@ -248,15 +248,14 @@ const RepositoryDetail = () => {
       setSelectedBranch(branchData.default_branch || 'main');
       setScans(scanData);
       
-      // DON'T auto-connect WebSocket for scans loaded from database
-      // Only create socket when user explicitly starts a NEW scan
-      // If there's a running scan, just show the UI state but don't connect socket
-      const runningScan = scanData.find(s => s.status === 'running' || s.status === 'pending');
-      if (runningScan) {
-        setScanning(true);
-        setScanProgress(runningScan.progress || 10);
-        // Note: WebSocket NOT connected here - it was already handled when scan started
-        // or the scan is stale (from previous session)
+      // Only restore running scan on initial load, not after scan completion
+      if (restoreRunningScan) {
+        const runningScan = scanData.find(s => s.status === 'running' || s.status === 'pending');
+        if (runningScan) {
+          setScanning(true);
+          setScanProgress(runningScan.progress || 50);
+          setScanStage('Workflow running...');
+        }
       }
     } catch (error) {
       toast.error('Failed to load repository details');
@@ -310,17 +309,21 @@ const RepositoryDetail = () => {
           
           // Check if this notification is for our current scan
           if (notification.data?.repository_id === id || notification.data?.scan_id === scanId) {
-            setScanProgress(100);
-            setScanStage('Scan completed successfully!');
+            setScanProgress(75);
+            setScanStage('Results received');
+            
+            setTimeout(() => {
+              setScanProgress(100);
+              setScanStage('Workflow completed');
+            }, 500);
             
             setTimeout(() => {
               setScanning(false);
               setScanProgress(0);
               setScanStage('');
-            }, 1500);
-            
-            toast.success(notification.message || 'Scan completed!');
-            fetchData();
+              toast.success(notification.message || 'Scan completed!');
+              fetchData(false); // Don't restore running scans after completion
+            }, 2000);
             
             // The backend will close the socket, but we clean up our refs
             console.log(`Scan ${scanId} completed, cleaning up WebSocket`);
@@ -385,7 +388,7 @@ const RepositoryDetail = () => {
   }, [id]);
 
   useEffect(() => {
-    fetchData();
+    fetchData(true); // Restore running scan on initial load
   }, [id, fetchData]);
   
   useEffect(() => {
@@ -410,37 +413,18 @@ const RepositoryDetail = () => {
   const executeScan = async (mode) => {
     setShowScanDialog(false);
     setScanning(true);
-    setScanProgress(5);
-    setScanStage('Initializing scan...');
+    setScanProgress(25);
+    setScanStage('Starting scan...');
     
     try {
       const baseCommit = mode === 'diff' && selectedCommit ? selectedCommit : null;
-      
-      setScanProgress(15);
-      setScanStage('Connecting to repository...');
       
       const result = await api.startGitHubScan(id, mode, selectedBranch, baseCommit);
       
       if (result.success) {
         toast.success('Scan started successfully!');
-        setScanProgress(25);
-        setScanStage('Analyzing code structure...');
-        
-        // Simulate progressive scan stages
-        setTimeout(() => {
-          setScanProgress(40);
-          setScanStage('Scanning for vulnerabilities...');
-        }, 2000);
-        
-        setTimeout(() => {
-          setScanProgress(60);
-          setScanStage('Running AI analysis...');
-        }, 4000);
-        
-        setTimeout(() => {
-          setScanProgress(80);
-          setScanStage('Processing results...');
-        }, 6000);
+        setScanProgress(50);
+        setScanStage('Workflow created');
         
         // Connect WebSocket immediately for this scan
         connectScanWebSocket(result.scan_id);
@@ -452,7 +436,7 @@ const RepositoryDetail = () => {
           scan_mode: mode,
           branch: selectedBranch,
           started_at: new Date().toISOString(),
-          progress: 25
+          progress: 50
         }, ...prev]);
       }
     } catch (error) {
@@ -554,12 +538,20 @@ const RepositoryDetail = () => {
                       <div className="space-y-1">
                         <div className="flex items-center gap-3">
                           <div className="relative">
-                            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                            <div className="absolute inset-0 w-6 h-6 animate-ping text-primary/20">
-                              <Loader2 className="w-6 h-6" />
-                            </div>
+                            {scanProgress === 100 ? (
+                              <CheckCircle className="w-6 h-6 text-green-500" />
+                            ) : (
+                              <>
+                                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                                <div className="absolute inset-0 w-6 h-6 animate-ping text-primary/20">
+                                  <Loader2 className="w-6 h-6" />
+                                </div>
+                              </>
+                            )}
                           </div>
-                          <span className="font-semibold text-lg">Security Scan in Progress</span>
+                          <span className="font-semibold text-lg">
+                            {scanProgress === 100 ? 'Scan Complete' : 'Security Scan in Progress'}
+                          </span>
                         </div>
                         <p className="text-sm text-muted-foreground ml-9">
                           {scanStage}
@@ -573,37 +565,30 @@ const RepositoryDetail = () => {
                     
                     <div className="space-y-2">
                       <Progress value={scanProgress} className="h-3" />
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Shield className="w-3 h-3" />
-                          Deep code analysis powered by AI
-                        </span>
-                        <span>
-                          Estimated time: {scanProgress < 50 ? '2-3 min' : scanProgress < 80 ? '1-2 min' : 'Almost done...'}
-                        </span>
-                      </div>
                     </div>
                     
-                    {scanProgress >= 25 && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="grid grid-cols-3 gap-3 pt-2"
-                      >
-                        <div className={`flex items-center gap-2 text-xs ${scanProgress >= 25 ? 'text-green-500' : 'text-muted-foreground'}`}>
-                          <CheckCircle className="w-4 h-4" />
-                          Code structure
-                        </div>
-                        <div className={`flex items-center gap-2 text-xs ${scanProgress >= 60 ? 'text-green-500' : scanProgress >= 40 ? 'text-primary' : 'text-muted-foreground'}`}>
-                          {scanProgress >= 60 ? <CheckCircle className="w-4 h-4" /> : <Loader2 className="w-4 h-4 animate-spin" />}
-                          Vulnerabilities
-                        </div>
-                        <div className={`flex items-center gap-2 text-xs ${scanProgress >= 80 ? 'text-green-500' : scanProgress >= 60 ? 'text-primary' : 'text-muted-foreground'}`}>
-                          {scanProgress >= 80 ? <CheckCircle className="w-4 h-4" /> : scanProgress >= 60 ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clock className="w-4 h-4" />}
-                          AI Analysis
-                        </div>
-                      </motion.div>
-                    )}
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="grid grid-cols-4 gap-3 pt-2"
+                    >
+                      <div className={`flex items-center gap-2 text-xs ${scanProgress >= 25 ? 'text-green-500 font-medium' : 'text-muted-foreground'}`}>
+                        {scanProgress >= 25 ? <CheckCircle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                        Starting scan
+                      </div>
+                      <div className={`flex items-center gap-2 text-xs ${scanProgress >= 50 ? 'text-green-500 font-medium' : scanProgress >= 25 ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {scanProgress >= 50 ? <CheckCircle className="w-4 h-4" /> : scanProgress >= 25 ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clock className="w-4 h-4" />}
+                        Workflow created
+                      </div>
+                      <div className={`flex items-center gap-2 text-xs ${scanProgress >= 75 ? 'text-green-500 font-medium' : scanProgress >= 50 ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {scanProgress >= 75 ? <CheckCircle className="w-4 h-4" /> : scanProgress >= 50 ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clock className="w-4 h-4" />}
+                        Results received
+                      </div>
+                      <div className={`flex items-center gap-2 text-xs ${scanProgress >= 100 ? 'text-green-500 font-medium' : scanProgress >= 75 ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {scanProgress >= 100 ? <CheckCircle className="w-4 h-4" /> : scanProgress >= 75 ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clock className="w-4 h-4" />}
+                        Workflow completed
+                      </div>
+                    </motion.div>
                   </div>
                 </CardContent>
               </Card>
