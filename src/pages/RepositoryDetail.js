@@ -187,7 +187,6 @@ const RepositoryDetail = () => {
   const { id } = useParams();
   const [repo, setRepo] = useState(null);
   const [vulnerabilities, setVulnerabilities] = useState([]);
-  const [patterns, setPatterns] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Branch & File Tree state
