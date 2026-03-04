@@ -225,6 +225,14 @@ export const api = {
     return response.data;
   },
 
+  getScanDebug: async (repoId) => {
+    const response = await axios.get(
+      `${API}/scan/debug/latest/${repoId}`,
+      { headers: getHeaders() }
+    );
+    return response.data;
+  },
+
   // Notifications
   getNotifications: async (unreadOnly = true, limit = 20) => {
     const response = await axios.get(
