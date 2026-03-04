@@ -33,10 +33,10 @@
         "zustand": "^4.4.7"
     },
     "scripts": {
-        "start": "craco start",
-        "build": "craco build",
-        "test": "craco test",
-        "eject": "react-scripts eject"
+        "start": "node --no-deprecation node_modules/.bin/craco start",
+        "build": "node --no-deprecation node_modules/.bin/craco build",
+        "test": "node --no-deprecation node_modules/.bin/craco test",
+        "eject": "node --no-deprecation node_modules/.bin/react-scripts eject"
     },
     "eslintConfig": {
         "extends": [
