@@ -268,17 +268,15 @@ const RepositoryDetail = () => {
   // Define fetchData first so it can be referenced by handleWebSocketMessage
   const fetchData = useCallback(async (restoreRunningScan = false) => {
     try {
-      const [repoData, vulnData, patternData, branchData, scanData] = await Promise.all([
+      const [repoData, vulnData, branchData, scanData] = await Promise.all([
         api.getRepository(id),
         api.getVulnerabilities({ repository_id: id }),
-        api.getAIPatterns(id),
         api.getRepoBranches(id).catch(() => ({ branches: [], default_branch: 'main' })),
         api.getRepoScans(id).catch(() => [])
       ]);
       
       setRepo(repoData);
       setVulnerabilities(vulnData);
-      setPatterns(patternData);
       setBranches(branchData.branches || []);
       setDefaultBranch(branchData.default_branch || 'main');
       setSelectedBranch(branchData.default_branch || 'main');
@@ -713,8 +711,8 @@ const RepositoryDetail = () => {
           </Card>
           <Card data-testid="patterns-stat">
             <CardContent className="pt-6">
-              <div className="text-sm text-muted-foreground mb-2">AI Patterns</div>
-              <div className="text-3xl font-bold text-primary">{patterns.length}</div>
+              <div className="text-sm text-muted-foreground mb-2">AI Debug Runs</div>
+              <div className="text-3xl font-bold text-primary">{scanDebug ? (scanDebug.vuln_wrapper_count ?? 0) : '—'}</div>
             </CardContent>
           </Card>
         </div>
