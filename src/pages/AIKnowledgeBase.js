@@ -118,6 +118,11 @@ const AIKnowledgeBase = () => {
                               {record.chunk_stats.failed} failed
                             </Badge>
                           )}
+                          {record.chunk_stats.manual_review > 0 && (
+                            <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-600">
+                              {record.chunk_stats.manual_review} manual review
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     )}
@@ -144,6 +149,38 @@ const AIKnowledgeBase = () => {
                                 : 'unknown functions'}
                               <span className="text-destructive/70 ml-1">
                                 ({fc.attempts} attempts — {fc.error || 'Unknown error'})
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Manual inspection required (413 Too Large) */}
+                    {record.manual_review_required && record.manual_review_required.length > 0 && (
+                      <div className="mt-3 p-3 rounded-md bg-yellow-500/10 border border-yellow-500/30">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                          <span className="text-sm font-medium text-yellow-700 dark:text-yellow-400">
+                            Manual Inspection Required — {record.manual_review_required.length} chunk(s) too large for AI
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          These functions could not be analyzed by AI due to request size limits. Please review them manually for potential vulnerabilities.
+                        </p>
+                        <div className="space-y-1.5">
+                          {record.manual_review_required.map((mr, i) => (
+                            <div key={i} className="text-xs text-muted-foreground">
+                              <span className="font-mono">
+                                Chunk {mr.chunk_index + 1} [{mr.lang}]
+                              </span>
+                              {' — '}
+                              {mr.function_names?.length > 0
+                                ? mr.function_names.slice(0, 5).join(', ')
+                                  + (mr.function_names.length > 5 ? ` +${mr.function_names.length - 5} more` : '')
+                                : 'unknown functions'}
+                              <span className="text-yellow-600 dark:text-yellow-400 ml-1">
+                                ({mr.wrapper_count} function{mr.wrapper_count !== 1 ? 's' : ''})
                               </span>
                             </div>
                           ))}
