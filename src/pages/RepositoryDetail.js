@@ -355,7 +355,6 @@ const RepositoryDetail = () => {
 
         // LLM chunk progress (emitted after every single chunk, and once after Phase 1)
         if (data.type === 'llm_chunk_progress') {
-          console.log('LLM chunk progress:', data.processed, '/', data.total, 'ETA:', data.estimated_seconds_remaining);
           const pct = data.total > 0
             ? Math.round(35 + (data.processed / data.total) * 10)
             : 35;
