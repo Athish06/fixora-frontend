@@ -1050,7 +1050,36 @@ const RepositoryDetail = () => {
                         {!wd ? (
                           <Card><CardContent className="py-10 text-center text-muted-foreground">No wrapper hunter data in this scan yet.</CardContent></Card>
                         ) : (
-                          Object.entries(wd.results || {}).map(([lang, section]) => (
+                          <>
+                            {Array.isArray(wd.scan_targets) && wd.scan_targets.length > 0 && (
+                              <Card className="border-border/60">
+                                <CardHeader className="pb-2 pt-4">
+                                  <CardTitle className="text-sm flex items-center gap-2">
+                                    <Database className="w-3.5 h-3.5" />
+                                    Scan Targets ({wd.scan_targets.length})
+                                  </CardTitle>
+                                  <CardDescription className="text-xs">
+                                    Wrapper Hunter executed per folder/language target to avoid monorepo cross-contamination
+                                  </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                  {wd.scan_targets.map((t, i) => (
+                                    <div key={`${t.language}-${t.scan_path || i}-${i}`} className="text-xs text-muted-foreground">
+                                      <span className="font-mono text-foreground">[{t.language}] {t.scan_path || t.root_path || '.'}</span>
+                                      {t.root_path && t.root_path !== t.scan_path && (
+                                        <span className="ml-1">(root: {t.root_path})</span>
+                                      )}
+                                      <span className="ml-1">• {t.wrapper_count ?? 0} wrapper{(t.wrapper_count ?? 0) !== 1 ? 's' : ''}</span>
+                                      {t.modules?.all && (
+                                        <span className="ml-1">• {t.modules.all.length} module{t.modules.all.length !== 1 ? 's' : ''}</span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </CardContent>
+                              </Card>
+                            )}
+
+                            {Object.entries(wd.results || {}).map(([lang, section]) => (
                             <div key={lang} className="space-y-3">
                               <h3 className="font-semibold text-base flex items-center gap-2">
                                 <Terminal className="w-4 h-4 text-primary" />
@@ -1109,7 +1138,8 @@ const RepositoryDetail = () => {
                                 </CardContent>
                               </Card>
                             </div>
-                          ))
+                            ))}
+                          </>
                         )}
                       </div>
                     )}
@@ -1154,6 +1184,34 @@ const RepositoryDetail = () => {
                                 {llmR.error && <Badge variant="destructive" className="ml-auto">Error</Badge>}
                               </CardContent>
                             </Card>
+
+                            {Array.isArray(wd?.scan_targets) && wd.scan_targets.length > 0 && (
+                              <Card className="border-border/60">
+                                <CardHeader className="pb-2 pt-4">
+                                  <CardTitle className="text-sm">Folder / Language Result Breakdown</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-1.5">
+                                  {wd.scan_targets.map((t, i) => {
+                                    const langSection = llmR.results?.[t.language] || {};
+                                    const allFns = langSection.wrapper_functions || [];
+                                    const normalizedScan = (t.scan_path || '.').replace(/\\/g, '/');
+                                    const prefix = normalizedScan === '.'
+                                      ? ''
+                                      : `${normalizedScan.replace(/\/+$/, '')}/`;
+                                    const vulnCount = prefix
+                                      ? allFns.filter((fn) => (fn.file || '').replace(/\\/g, '/').startsWith(prefix)).length
+                                      : allFns.length;
+
+                                    return (
+                                      <div key={`${t.language}-${t.scan_path || i}-${i}`} className="text-xs text-muted-foreground">
+                                        <span className="font-mono text-foreground">[{t.language}] {t.scan_path || t.root_path || '.'}</span>
+                                        <span className="ml-1">• {vulnCount} vulnerable wrapper{vulnCount !== 1 ? 's' : ''}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </CardContent>
+                              </Card>
+                            )}
 
                             {Object.entries(llmR.results || {}).map(([lang, section]) => (
                               <div key={lang} className="space-y-3">
