@@ -213,25 +213,45 @@ const RepositoryDetail = () => {
 
   // Debug / AI analysis state
   const [scanDebug, setScanDebug] = useState(null);
+  const [scanDebugRuns, setScanDebugRuns] = useState([]);
+  const [selectedDebugRunId, setSelectedDebugRunId] = useState('');
   const [loadingDebug, setLoadingDebug] = useState(false);
   const [debugError, setDebugError] = useState(null);
   const [copiedSection, setCopiedSection] = useState(null);
   const [debugInnerTab, setDebugInnerTab] = useState('wrapper');
   
-  const fetchScanDebug = useCallback(async () => {
+  const fetchScanDebug = useCallback(async (preferredDebugId = null) => {
     if (!id) return;
     setLoadingDebug(true);
     setDebugError(null);
     try {
-      const data = await api.getScanDebug(id);
+      const runs = await api.getAIDebug(id);
+      setScanDebugRuns(runs || []);
+
+      if (!runs || runs.length === 0) {
+        setScanDebug(null);
+        setSelectedDebugRunId('');
+        setDebugError('No scan debug data available yet. Run a scan first.');
+        return;
+      }
+
+      const candidateId = preferredDebugId || selectedDebugRunId || runs[0].id;
+      const targetId = runs.some((r) => r.id === candidateId) ? candidateId : runs[0].id;
+      const data = await api.getAIDebugById(targetId);
       setScanDebug(data);
+      setSelectedDebugRunId(targetId);
     } catch (err) {
       setDebugError(err?.response?.data?.detail || 'No scan debug data available yet. Run a scan first.');
       setScanDebug(null);
     } finally {
       setLoadingDebug(false);
     }
-  }, [id]);
+  }, [id, selectedDebugRunId]);
+
+  const handleDebugRunChange = useCallback((runId) => {
+    setSelectedDebugRunId(runId);
+    fetchScanDebug(runId);
+  }, [fetchScanDebug]);
 
   const copyToClipboard = useCallback((text, section) => {
     navigator.clipboard.writeText(text || '').then(() => {
@@ -966,13 +986,32 @@ const RepositoryDetail = () => {
                     AI Pipeline Debug
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Full trace of Wrapper Hunter → Groq LLM → Semgrep rules for the latest scan
+                    Full trace of Wrapper Hunter → Groq LLM → Semgrep rules (scan-wise)
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={fetchScanDebug} disabled={loadingDebug}>
-                  {loadingDebug ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                  <span className="ml-2">Refresh</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                  {!loadingDebug && scanDebugRuns.length > 0 && (
+                    <Select
+                      value={selectedDebugRunId || scanDebugRuns[0].id}
+                      onValueChange={handleDebugRunChange}
+                    >
+                      <SelectTrigger className="w-[320px]" data-testid="ai-debug-run-select">
+                        <SelectValue placeholder="Select debug run" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {scanDebugRuns.map((run) => (
+                          <SelectItem key={run.id} value={run.id}>
+                            {run.scan_id?.slice(0, 8)} • {new Date(run.created_at).toLocaleString()} • {run.vuln_wrapper_count ?? 0} wrappers
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => fetchScanDebug(selectedDebugRunId || null)} disabled={loadingDebug}>
+                    {loadingDebug ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    <span className="ml-2">Refresh</span>
+                  </Button>
+                </div>
               </div>
 
               {/* Loading */}
