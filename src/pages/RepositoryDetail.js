@@ -570,6 +570,40 @@ const RepositoryDetail = () => {
     };
     return colors[severity] || 'default';
   };
+
+  const severityRank = useCallback((severity) => {
+    const rank = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+    return rank[(severity || '').toLowerCase()] ?? 5;
+  }, []);
+
+  const normalizeVulnTitle = useCallback((vuln) => {
+    const raw = String(vuln?.title || '').trim();
+    const isBadPlaceholder = /requires\s+logn|requires\s+login|unknown\s+vulnerability/i.test(raw);
+    if (!raw || isBadPlaceholder) {
+      return String(vuln?.type || vuln?.category || 'Security Issue');
+    }
+    return raw;
+  }, []);
+
+  const groupedVulnerabilities = useMemo(() => {
+    const groups = {};
+    vulnerabilities.forEach((v) => {
+      const category = v.category || 'Insecure Design / Architecture';
+      if (!groups[category]) groups[category] = [];
+      groups[category].push(v);
+    });
+
+    return Object.entries(groups)
+      .map(([category, items]) => ({
+        category,
+        items: [...items].sort((a, b) => {
+          const bySeverity = severityRank(a.severity) - severityRank(b.severity);
+          if (bySeverity !== 0) return bySeverity;
+          return String(a.file_path || '').localeCompare(String(b.file_path || ''));
+        }),
+      }))
+      .sort((a, b) => b.items.length - a.items.length);
+  }, [vulnerabilities, severityRank]);
   
   const getScanStatusBadge = (status) => {
     const variants = {
@@ -852,47 +886,76 @@ const RepositoryDetail = () => {
                 </CardContent>
               </Card>
             ) : (
-              vulnerabilities.map((vuln, index) => (
-                <motion.div
-                  key={vuln.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <Card className="hover:border-primary/30 transition-all" data-testid={`vuln-${index}`}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-lg">{vuln.title}</CardTitle>
-                          <CardDescription>{vuln.file_path}:{vuln.line_number}</CardDescription>
-                        </div>
-                        <Badge variant={getSeverityColor(vuln.severity)}>
-                          {vuln.severity}
+              <div className="space-y-5">
+                <Card className="border-border/60 bg-muted/20">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {groupedVulnerabilities.map((group) => (
+                        <Badge key={group.category} variant="outline" className="text-xs">
+                          {group.category} • {group.items.length}
                         </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">{vuln.description}</p>
-                      {vuln.code_snippet && (
-                        <pre className="bg-black/50 p-4 rounded-md text-xs font-mono overflow-x-auto mb-4">
-                          <code>{vuln.code_snippet}</code>
-                        </pre>
-                      )}
-                      {vuln.ai_reasoning && (
-                        <div className="bg-primary/10 border border-primary/20 p-3 rounded-md">
-                          <p className="text-sm">
-                            <span className="font-semibold text-primary">AI Analysis: </span>
-                            {vuln.ai_reasoning}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Confidence: {(vuln.ai_confidence * 100).toFixed(0)}%
-                          </p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {groupedVulnerabilities.map((group, groupIndex) => (
+                  <motion.div
+                    key={group.category}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: groupIndex * 0.04 }}
+                    className="space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base font-semibold">{group.category}</h3>
+                      <Badge variant="secondary">{group.items.length} finding{group.items.length !== 1 ? 's' : ''}</Badge>
+                    </div>
+
+                    {group.items.map((vuln, index) => (
+                      <Card key={vuln.id || `${group.category}-${index}`} className="hover:border-primary/30 transition-all" data-testid={`vuln-${groupIndex}-${index}`}>
+                        <CardHeader>
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <CardTitle className="text-lg">{normalizeVulnTitle(vuln)}</CardTitle>
+                              <CardDescription>
+                                {vuln.file_path || 'unknown-file'}{vuln.line_number ? `:${vuln.line_number}` : ''}
+                              </CardDescription>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{vuln.type || 'Security Issue'}</Badge>
+                              <Badge variant={getSeverityColor(vuln.severity)}>
+                                {(vuln.severity || 'medium').toUpperCase()}
+                              </Badge>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-muted-foreground mb-4">{vuln.description || 'No description provided'}</p>
+                          {vuln.code_snippet && (
+                            <pre className="bg-black/50 p-4 rounded-md text-xs font-mono overflow-x-auto mb-4">
+                              <code>{vuln.code_snippet}</code>
+                            </pre>
+                          )}
+                          {vuln.ai_reasoning && (
+                            <div className="bg-primary/10 border border-primary/20 p-3 rounded-md">
+                              <p className="text-sm">
+                                <span className="font-semibold text-primary">AI Analysis: </span>
+                                {vuln.ai_reasoning}
+                              </p>
+                              {typeof vuln.ai_confidence === 'number' && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Confidence: {(vuln.ai_confidence * 100).toFixed(0)}%
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </motion.div>
+                ))}
+              </div>
             )}
           </TabsContent>
 
@@ -1472,17 +1535,13 @@ const RepositoryDetail = () => {
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-base">{vuln.title}</CardTitle>
+                        <CardTitle className="text-base">{normalizeVulnTitle(vuln)}</CardTitle>
                         <CardDescription className="text-xs">
-                          Line {vuln.line_number} • {vuln.type || 'Unknown Type'}
+                          Line {vuln.line_number || '?'} • {vuln.type || 'Security Issue'} • {vuln.category || 'Insecure Design / Architecture'}
                         </CardDescription>
                       </div>
-                      <Badge variant={
-                        vuln.severity === 'critical' ? 'destructive' : 
-                        vuln.severity === 'high' ? 'destructive' :
-                        vuln.severity === 'medium' ? 'warning' : 'secondary'
-                      }>
-                        {vuln.severity}
+                      <Badge variant={getSeverityColor(vuln.severity)}>
+                        {(vuln.severity || 'medium').toUpperCase()}
                       </Badge>
                     </div>
                   </CardHeader>
