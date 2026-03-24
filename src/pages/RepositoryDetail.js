@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
 import { 
   ArrowLeft, GitBranch, FileCode, AlertTriangle, 
   Folder, ChevronRight, ChevronDown,
@@ -88,6 +89,22 @@ const normalizeText = (raw, fallback) => {
   const value = String(raw || '').trim();
   if (!value || PLACEHOLDER_TEXT_RE.test(value)) return fallback;
   return value;
+};
+
+const MARKDOWN_COMPONENTS = {
+  h3: ({ children }) => <h3 className="text-base font-semibold text-foreground mb-2">{children}</h3>,
+  p: ({ children }) => <p className="text-sm text-muted-foreground leading-relaxed mb-2">{children}</p>,
+  strong: ({ children }) => <strong className="text-foreground font-semibold">{children}</strong>,
+  ul: ({ children }) => <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground mb-2">{children}</ul>,
+  ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground mb-2">{children}</ol>,
+  li: ({ children }) => <li>{children}</li>,
+  code: ({ inline, children }) => {
+    if (inline) {
+      return <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">{children}</code>;
+    }
+    return <code className="text-xs text-foreground">{children}</code>;
+  },
+  pre: ({ children }) => <pre className="bg-black/60 p-3 rounded-md overflow-x-auto mb-2">{children}</pre>,
 };
 
 // File Tree Component with vulnerability indicators
@@ -977,11 +994,14 @@ const RepositoryDetail = () => {
                                 </div>
                               </CardHeader>
                               <CardContent>
-                                <p className="text-sm text-muted-foreground mb-3">{vuln.description}</p>
-                                <div className="mb-3 rounded-md border border-border/60 bg-muted/30 px-3 py-2">
-                                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">Reason</p>
-                                  <p className="text-sm text-foreground/90">{vuln.reason}</p>
+                                <div className="mb-3 rounded-md border border-border/60 bg-muted/20 px-3 py-3">
+                                  <ReactMarkdown components={MARKDOWN_COMPONENTS}>
+                                    {vuln.description}
+                                  </ReactMarkdown>
                                 </div>
+                                {vuln.reason && vuln.reason !== vuln.description && (
+                                  <p className="text-xs text-muted-foreground mb-3">AI Analysis: {vuln.reason}</p>
+                                )}
                                 {vuln.code_snippet && (
                                   <pre className="bg-black/50 p-4 rounded-md text-xs font-mono overflow-x-auto mb-3">
                                     <code>{vuln.code_snippet}</code>
