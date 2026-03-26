@@ -91,6 +91,13 @@ const normalizeText = (raw, fallback) => {
   return value;
 };
 
+const normalizeCodeSnippet = (raw) => {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  if (/^requires\s+log(?:in|n)$/i.test(value)) return '';
+  return value;
+};
+
 const MARKDOWN_COMPONENTS = {
   h3: ({ children }) => <h3 className="text-base font-semibold text-foreground mb-2">{children}</h3>,
   p: ({ children }) => <p className="text-sm text-muted-foreground leading-relaxed mb-2">{children}</p>,
@@ -104,7 +111,7 @@ const MARKDOWN_COMPONENTS = {
     }
     return <code className="text-xs text-foreground">{children}</code>;
   },
-  pre: ({ children }) => <pre className="bg-black/60 p-3 rounded-md overflow-x-auto mb-2">{children}</pre>,
+  pre: ({ children }) => <pre className="bg-muted/50 border border-border/70 p-3 rounded-md overflow-x-auto mb-2">{children}</pre>,
 };
 
 // File Tree Component with vulnerability indicators
@@ -370,6 +377,7 @@ const RepositoryDetail = () => {
           vuln.reason || vuln.ai_reasoning,
           `Tagged as ${type} based on rule match and code context.`
         ),
+        code_snippet: normalizeCodeSnippet(vuln.code_snippet),
       };
     });
   }, [vulnerabilities]);
@@ -1003,7 +1011,7 @@ const RepositoryDetail = () => {
                                   <p className="text-xs text-muted-foreground mb-3">AI Analysis: {vuln.reason}</p>
                                 )}
                                 {vuln.code_snippet && (
-                                  <pre className="bg-black/50 p-4 rounded-md text-xs font-mono overflow-x-auto mb-3">
+                                  <pre className="bg-muted/50 border border-border/70 p-4 rounded-md text-xs font-mono overflow-x-auto mb-3">
                                     <code>{vuln.code_snippet}</code>
                                   </pre>
                                 )}
@@ -1624,10 +1632,10 @@ const RepositoryDetail = () => {
                   </CardHeader>
                   <CardContent className="pt-0 space-y-3">
                     <p className="text-sm text-muted-foreground">{vuln.description}</p>
-                    {vuln.code_snippet && (
+                    {normalizeCodeSnippet(vuln.code_snippet) && (
                       <div className="bg-muted rounded-md p-3 overflow-x-auto">
                         <pre className="text-xs font-mono whitespace-pre">
-                          {vuln.code_snippet}
+                          {normalizeCodeSnippet(vuln.code_snippet)}
                         </pre>
                       </div>
                     )}
