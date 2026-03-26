@@ -1184,6 +1184,12 @@ const RepositoryDetail = () => {
                 const llmR = scanDebug.llm_result;
                 const yaml = scanDebug.custom_rules_yaml;
                 const prompt = scanDebug.llm_prompt;
+                const hasDetailedPrompt = Boolean(
+                  prompt
+                  && !prompt.includes('(2-phase analysis: module-sink prompt + per-chunk function prompts)')
+                  && !prompt.startsWith('(Truncated')
+                  && !prompt.startsWith('(No prompt snapshot available')
+                );
 
                 const severityColor = (s) => ({
                   HIGH:     'bg-red-500/15 text-red-400 border-red-500/30',
@@ -1209,7 +1215,7 @@ const RepositoryDetail = () => {
                     <div className="flex gap-2 flex-wrap">
                       {[
                         { key: 'wrapper', label: 'Wrapper Hunter', icon: Terminal },
-                        { key: 'prompt',  label: 'LLM Prompt',     icon: Code2 },
+                        ...(hasDetailedPrompt ? [{ key: 'prompt', label: 'LLM Prompt', icon: Code2 }] : []),
                         { key: 'llm',     label: 'LLM Result',     icon: Cpu },
                         { key: 'rules',   label: 'Semgrep Rules',  icon: Zap },
                       ].map(({ key, label, icon: Icon }) => (
@@ -1328,7 +1334,7 @@ const RepositoryDetail = () => {
                     )}
 
                     {/* ───── LLM PROMPT ───── */}
-                    {debugInnerTab === 'prompt' && (
+                    {debugInnerTab === 'prompt' && hasDetailedPrompt && (
                       <Card className="border-border/60">
                         <CardHeader className="pb-2 pt-4 flex flex-row items-center justify-between">
                           <CardTitle className="text-sm flex items-center gap-2"><Code2 className="w-3.5 h-3.5" /> Exact Prompt Sent to Groq LLM</CardTitle>
