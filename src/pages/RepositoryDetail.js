@@ -393,6 +393,9 @@ const RepositoryDetail = () => {
       const category = normalizeCategory(vuln, type);
       const payload = normalizePayload(vuln.malicious_payload);
       const lineLink = buildGithubLineUrl(repo?.full_name, selectedBranch, vuln.file_path, vuln.line_number);
+      const affectedLines = Array.isArray(vuln.all_affected_lines)
+        ? [...new Set(vuln.all_affected_lines.map((n) => Number(n)).filter((n) => Number.isInteger(n) && n > 0))].sort((a, b) => a - b)
+        : (vuln.line_number ? [Number(vuln.line_number)] : []);
       return {
         ...vuln,
         type,
@@ -416,6 +419,7 @@ const RepositoryDetail = () => {
           `This ${type} issue may leak sensitive data, allow unauthorized modification/deletion, or degrade service availability.`
         ),
         affected_line_link: lineLink,
+        all_affected_lines: affectedLines,
       };
     });
   }, [vulnerabilities, repo?.full_name, selectedBranch]);
@@ -1104,6 +1108,11 @@ const RepositoryDetail = () => {
                                     </a>
                                   ) : (
                                     <p className="text-sm text-foreground">{vuln.file_path || 'unknown-file'}{vuln.line_number ? `:${vuln.line_number}` : ''}</p>
+                                  )}
+                                  {Array.isArray(vuln.all_affected_lines) && vuln.all_affected_lines.length > 0 && (
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                      Exact Affected Lines: [ {vuln.all_affected_lines.join(', ')} ]
+                                    </p>
                                   )}
                                 </div>
 
