@@ -314,6 +314,7 @@ const RepositoryDetail = () => {
   const [commits, setCommits] = useState([]);
   const [selectedCommit, setSelectedCommit] = useState('');
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(null);
+  const [activeScanId, setActiveScanId] = useState('');
   
   // State for file-based vulnerability viewer
   const [selectedFileVulns, setSelectedFileVulns] = useState(null);
@@ -490,9 +491,13 @@ const RepositoryDetail = () => {
       if (restoreRunningScan) {
         const runningScan = scanData.find(s => s.status === 'running' || s.status === 'pending');
         if (runningScan) {
+          completionHandledRef.current = false;
+          setActiveScanId(runningScan.id || '');
           setScanning(true);
           setScanProgress(runningScan.progress || 50);
           setScanStage('Workflow running...');
+        } else {
+          setActiveScanId('');
         }
       }
     } catch (error) {
@@ -505,6 +510,34 @@ const RepositoryDetail = () => {
   // WebSocket ref for scan-specific connections
   const scanWsRef = useRef(null);
   const pingIntervalRef = useRef(null);
+  const completionHandledRef = useRef(false);
+
+  const finalizeScanCompletion = useCallback((message) => {
+    if (completionHandledRef.current) return;
+    completionHandledRef.current = true;
+
+    setScanProgress(85);
+    setScanStage('Results received');
+
+    setTimeout(() => {
+      setScanProgress(100);
+      setScanStage('Scan completed!');
+    }, 500);
+
+    setTimeout(() => {
+      setScanning(false);
+      setActiveScanId('');
+      setScanProgress(0);
+      setScanStage('');
+      setEstimatedTimeRemaining(null);
+      toast.success(message || 'Scan completed!');
+      fetchData(false);
+
+      if (scanWsRef.current) {
+        scanWsRef.current.close();
+      }
+    }, 2000);
+  }, [fetchData]);
   
   // Function to connect WebSocket for a specific scan
   const connectScanWebSocket = useCallback((scanId) => {
@@ -600,29 +633,17 @@ const RepositoryDetail = () => {
         
         // Scan complete (final)
         if (data.type === 'scan_complete') {
-          const notification = data.notification;
+          const notification = data.notification || {};
+          const notificationData = notification.data || {};
           
           // Check if this notification is for our current scan
-          if (notification.data?.repository_id === id || notification.data?.scan_id === scanId) {
-            setScanProgress(85);
-            setScanStage('Results received');
-            
-            setTimeout(() => {
-              setScanProgress(100);
-              setScanStage('Scan completed!');
-            }, 500);
-            
-            setTimeout(() => {
-              setScanning(false);
-              setScanProgress(0);
-              setScanStage('');
-              setEstimatedTimeRemaining(null);
-              toast.success(notification.message || 'Scan completed!');
-              fetchData(false); // Don't restore running scans after completion
-            }, 2000);
-            
-            // The backend will close the socket, but we clean up our refs
-            console.log(`Scan ${scanId} completed, cleaning up WebSocket`);
+          if (
+            notificationData.repository_id === id ||
+            notificationData.scan_id === scanId ||
+            data.scan_id === scanId
+          ) {
+            finalizeScanCompletion(notification.message || data.message || 'Scan completed!');
+            console.log(`Scan ${scanId} completed, processing final UI state`);
           }
         }
       } catch (error) {
@@ -642,7 +663,44 @@ const RepositoryDetail = () => {
     ws.onerror = (error) => {
       console.error(`WebSocket error for scan ${scanId}:`, error);
     };
-  }, [id, fetchData]);
+  }, [id, finalizeScanCompletion]);
+
+  // Reconnect scan-specific socket when restoring an in-progress scan.
+  useEffect(() => {
+    if (!scanning || !activeScanId) return;
+    if (scanWsRef.current && scanWsRef.current.readyState === WebSocket.OPEN) return;
+    connectScanWebSocket(activeScanId);
+  }, [scanning, activeScanId, connectScanWebSocket]);
+
+  // Poll as a fallback in case the final WebSocket event is missed.
+  useEffect(() => {
+    if (!scanning || !activeScanId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const latestScans = await api.getRepoScans(id).catch(() => []);
+        const active = (latestScans || []).find((s) => s.id === activeScanId);
+        if (!active) return;
+
+        if (active.status === 'completed') {
+          finalizeScanCompletion('Scan completed!');
+        } else if (active.status === 'failed') {
+          completionHandledRef.current = true;
+          setScanning(false);
+          setActiveScanId('');
+          setScanProgress(0);
+          setScanStage('');
+          setEstimatedTimeRemaining(null);
+          toast.error(active.error || active.error_message || 'Scan failed');
+          fetchData(false);
+        }
+      } catch (e) {
+        // Ignore polling hiccups; WebSocket may still deliver completion.
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [scanning, activeScanId, id, finalizeScanCompletion, fetchData]);
   
   // Cleanup WebSocket on unmount
   useEffect(() => {
@@ -719,6 +777,8 @@ const RepositoryDetail = () => {
       const result = await api.startGitHubScan(id, mode, selectedBranch, baseCommit);
       
       if (result.success) {
+        completionHandledRef.current = false;
+        setActiveScanId(result.scan_id || '');
         toast.success('Scan pipeline started!');
         setScanProgress(15);
         setScanStage('Wrapper hunter running...');
