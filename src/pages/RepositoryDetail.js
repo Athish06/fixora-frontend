@@ -98,6 +98,33 @@ const normalizeCodeSnippet = (raw) => {
   return value;
 };
 
+const normalizePayload = (raw) => {
+  if (raw === null || raw === undefined) return '';
+  if (typeof raw === 'string') return raw.trim();
+  try {
+    return JSON.stringify(raw, null, 2);
+  } catch {
+    return String(raw);
+  }
+};
+
+const buildGithubLineUrl = (repoFullName, branch, filePath, lineNumber) => {
+  if (!repoFullName || !filePath) return '';
+  const cleanFile = String(filePath).replace(/^\/+/, '');
+  const safeBranch = branch || 'main';
+  const linePart = lineNumber ? `#L${lineNumber}` : '';
+  return `https://github.com/${repoFullName}/blob/${safeBranch}/${cleanFile}${linePart}`;
+};
+
+const buildInjectedExample = (vuln) => {
+  const explicit = String(vuln?.exploit_injected_example || '').trim();
+  if (explicit) return explicit;
+  const fn = String(vuln?.title || vuln?.function_name || 'vulnerableFunction').replace(/\s+/g, '');
+  const param = String(vuln?.vulnerable_parameter || 'user_input');
+  const payload = normalizePayload(vuln?.malicious_payload) || '<attacker_payload>';
+  return `${fn}(${param}=${payload})`;
+};
+
 const MARKDOWN_COMPONENTS = {
   h3: ({ children }) => <h3 className="text-base font-semibold text-foreground mb-2">{children}</h3>,
   p: ({ children }) => <p className="text-sm text-muted-foreground leading-relaxed mb-2">{children}</p>,
@@ -364,6 +391,8 @@ const RepositoryDetail = () => {
     return vulnerabilities.map((vuln) => {
       const type = normalizeType(vuln);
       const category = normalizeCategory(vuln, type);
+      const payload = normalizePayload(vuln.malicious_payload);
+      const lineLink = buildGithubLineUrl(repo?.full_name, selectedBranch, vuln.file_path, vuln.line_number);
       return {
         ...vuln,
         type,
@@ -378,15 +407,56 @@ const RepositoryDetail = () => {
           `Tagged as ${type} based on rule match and code context.`
         ),
         code_snippet: normalizeCodeSnippet(vuln.code_snippet),
+        vulnerable_parameter: String(vuln.vulnerable_parameter || '').trim(),
+        malicious_payload: payload,
+        exploit_explanation: String(vuln.exploit_explanation || '').trim(),
+        exploit_injected_example: buildInjectedExample(vuln),
+        impact_summary: normalizeText(
+          vuln.impact_summary,
+          `This ${type} issue may leak sensitive data, allow unauthorized modification/deletion, or degrade service availability.`
+        ),
+        affected_line_link: lineLink,
       };
     });
-  }, [vulnerabilities]);
+  }, [vulnerabilities, repo?.full_name, selectedBranch]);
 
-  const groupedVulnerabilities = useMemo(() => {
-    return UNIFIED_VULN_CATEGORIES.map((category) => ({
-      category,
-      items: normalizedVulnerabilities.filter((v) => v.category === category),
-    }));
+  const groupedByFileThenCategory = useMemo(() => {
+    const grouped = normalizedVulnerabilities.reduce((acc, vuln) => {
+      const file = vuln.file_path || 'unknown-file';
+      const category = vuln.category || 'Uncategorized';
+      if (!acc[file]) {
+        acc[file] = {};
+      }
+      if (!acc[file][category]) {
+        acc[file][category] = [];
+      }
+      acc[file][category].push(vuln);
+      return acc;
+    }, {});
+
+    return Object.keys(grouped)
+      .sort((a, b) => a.localeCompare(b))
+      .map((filePath) => {
+        const categories = Object.keys(grouped[filePath])
+          .sort((a, b) => {
+            const ai = UNIFIED_VULN_CATEGORIES.indexOf(a);
+            const bi = UNIFIED_VULN_CATEGORIES.indexOf(b);
+            if (ai === -1 && bi === -1) return a.localeCompare(b);
+            if (ai === -1) return 1;
+            if (bi === -1) return -1;
+            return ai - bi;
+          })
+          .map((category) => ({
+            category,
+            items: grouped[filePath][category],
+          }));
+
+        return {
+          filePath,
+          categories,
+          totalFindings: categories.reduce((sum, c) => sum + c.items.length, 0),
+        };
+      });
   }, [normalizedVulnerabilities]);
   
   // Handle file click in tree to show vulnerabilities
@@ -962,29 +1032,39 @@ const RepositoryDetail = () => {
                 </CardContent>
               </Card>
             ) : (
-              groupedVulnerabilities.map((group, groupIndex) => (
-                <Card key={group.category} className="border-border/60" data-testid={`vuln-group-${groupIndex}`}>
+              groupedByFileThenCategory.map((fileGroup, fileIndex) => (
+                <Card key={fileGroup.filePath} className="border-border/60" data-testid={`vuln-file-group-${fileIndex}`}>
                   <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">{group.category}</CardTitle>
-                      <Badge variant={group.items.length > 0 ? 'secondary' : 'outline'}>
-                        {group.items.length} finding{group.items.length !== 1 ? 's' : ''}
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <CardTitle className="text-base">{fileGroup.filePath}</CardTitle>
+                        <CardDescription>File-wise grouped findings</CardDescription>
+                      </div>
+                      <Badge variant={fileGroup.totalFindings > 0 ? 'secondary' : 'outline'}>
+                        {fileGroup.totalFindings} finding{fileGroup.totalFindings !== 1 ? 's' : ''}
                       </Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {group.items.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No findings in this category.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {group.items.map((vuln, index) => (
+                    <div className="space-y-4">
+                      {fileGroup.categories.map((group, groupIndex) => (
+                        <div key={`${fileGroup.filePath}-${group.category}`} className="rounded-md border border-border/50 p-3">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-semibold">{group.category}</h4>
+                            <Badge variant={group.items.length > 0 ? 'secondary' : 'outline'}>
+                              {group.items.length} finding{group.items.length !== 1 ? 's' : ''}
+                            </Badge>
+                          </div>
+
+                          <div className="space-y-3">
+                            {group.items.map((vuln, index) => (
                           <motion.div
-                            key={vuln.id || `${group.category}-${index}`}
+                            key={vuln.id || `${fileGroup.filePath}-${group.category}-${index}`}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: (groupIndex * 0.03) + (index * 0.02) }}
+                            transition={{ delay: (fileIndex * 0.02) + (groupIndex * 0.02) + (index * 0.01) }}
                           >
-                            <Card className="hover:border-primary/30 transition-all" data-testid={`vuln-${groupIndex}-${index}`}>
+                            <Card className="hover:border-primary/30 transition-all" data-testid={`vuln-${fileIndex}-${groupIndex}-${index}`}>
                               <CardHeader>
                                 <div className="flex items-start justify-between gap-3">
                                   <div>
@@ -1010,11 +1090,58 @@ const RepositoryDetail = () => {
                                 {vuln.reason && vuln.reason !== vuln.description && (
                                   <p className="text-xs text-muted-foreground mb-3">AI Analysis: {vuln.reason}</p>
                                 )}
+
+                                <div className="mb-3 rounded-md border border-rose-400/45 bg-rose-500/10 px-3 py-3">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-rose-300 mb-1">Affected Line</p>
+                                  {vuln.affected_line_link ? (
+                                    <a
+                                      href={vuln.affected_line_link}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-sm text-rose-100 underline decoration-rose-300/70 hover:text-white"
+                                    >
+                                      {vuln.file_path || 'unknown-file'}{vuln.line_number ? `:${vuln.line_number}` : ''}
+                                    </a>
+                                  ) : (
+                                    <p className="text-sm text-rose-100">{vuln.file_path || 'unknown-file'}{vuln.line_number ? `:${vuln.line_number}` : ''}</p>
+                                  )}
+                                </div>
+
                                 {vuln.code_snippet && (
-                                  <pre className="bg-muted/50 border border-border/70 p-4 rounded-md text-xs font-mono overflow-x-auto mb-3">
+                                  <pre className="bg-amber-500/10 border border-amber-400/45 p-4 rounded-md text-xs font-mono overflow-x-auto mb-3 text-amber-50">
                                     <code>{vuln.code_snippet}</code>
                                   </pre>
                                 )}
+
+                                {(vuln.vulnerable_parameter || vuln.malicious_payload || vuln.exploit_injected_example || vuln.exploit_explanation || vuln.impact_summary) && (
+                                  <div className="space-y-3 mb-3">
+                                    <div className="rounded-md border border-fuchsia-400/45 bg-fuchsia-500/10 px-3 py-3">
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-fuchsia-200 mb-1">Vulnerable Parameter</p>
+                                      <p className="text-sm text-fuchsia-50">{vuln.vulnerable_parameter || 'user_input'}</p>
+                                    </div>
+
+                                    <div className="rounded-md border border-orange-400/45 bg-orange-500/10 px-3 py-3">
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-orange-200 mb-1">Malicious Payload (raw)</p>
+                                      <pre className="text-xs font-mono whitespace-pre-wrap break-words text-orange-50">{vuln.malicious_payload || '<attacker_payload>'}</pre>
+                                    </div>
+
+                                    <div className="rounded-md border border-cyan-400/45 bg-cyan-500/10 px-3 py-3">
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-cyan-200 mb-1">Payload Inserted In Function</p>
+                                      <pre className="text-xs font-mono whitespace-pre-wrap break-words text-cyan-50">{vuln.exploit_injected_example}</pre>
+                                    </div>
+
+                                    <div className="rounded-md border border-indigo-400/45 bg-indigo-500/10 px-3 py-3">
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-indigo-200 mb-1">How Payload Flows (Theory)</p>
+                                      <p className="text-sm text-indigo-50">{vuln.exploit_explanation || vuln.reason}</p>
+                                    </div>
+
+                                    <div className="rounded-md border border-red-400/45 bg-red-500/10 px-3 py-3">
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-red-200 mb-1">Data Loss / Leak Impact</p>
+                                      <p className="text-sm text-red-50">{vuln.impact_summary}</p>
+                                    </div>
+                                  </div>
+                                )}
+
                                 {vuln.ai_reasoning && (
                                   <div className="bg-primary/10 border border-primary/20 p-3 rounded-md">
                                     <p className="text-sm">
@@ -1031,9 +1158,11 @@ const RepositoryDetail = () => {
                               </CardContent>
                             </Card>
                           </motion.div>
-                        ))}
-                      </div>
-                    )}
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
               ))
