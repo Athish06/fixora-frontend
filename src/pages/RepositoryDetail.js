@@ -86,13 +86,13 @@ const normalizeCategory = (vuln, normalizedType) => {
 };
 
 const normalizeText = (raw, fallback) => {
-  const value = String(raw || '').trim();
+  const value = String(raw || '').replace(/\\n/g, '\n').trim();
   if (!value || PLACEHOLDER_TEXT_RE.test(value)) return fallback;
   return value;
 };
 
 const normalizeCodeSnippet = (raw) => {
-  const value = String(raw || '').trim();
+  const value = String(raw || '').replace(/\\n/g, '\n').trim();
   if (!value) return '';
   if (/^requires\s+log(?:in|n)$/i.test(value)) return '';
   return value;
@@ -100,7 +100,7 @@ const normalizeCodeSnippet = (raw) => {
 
 const normalizePayload = (raw) => {
   if (raw === null || raw === undefined) return '';
-  if (typeof raw === 'string') return raw.trim();
+  if (typeof raw === 'string') return raw.replace(/\\n/g, '\n').trim();
   try {
     return JSON.stringify(raw, null, 2);
   } catch {
@@ -409,8 +409,8 @@ const RepositoryDetail = () => {
         code_snippet: normalizeCodeSnippet(vuln.code_snippet),
         vulnerable_parameter: String(vuln.vulnerable_parameter || '').trim(),
         malicious_payload: payload,
-        exploit_explanation: String(vuln.exploit_explanation || '').trim(),
-        exploit_injected_example: buildInjectedExample(vuln),
+        exploit_explanation: String(vuln.exploit_explanation || '').replace(/\\n/g, '\n').trim(),
+        exploit_injected_example: String(buildInjectedExample(vuln) || '').replace(/\\n/g, '\n').trim(),
         impact_summary: normalizeText(
           vuln.impact_summary,
           `This ${type} issue may leak sensitive data, allow unauthorized modification/deletion, or degrade service availability.`
@@ -1082,7 +1082,7 @@ const RepositoryDetail = () => {
                                 </div>
                               </CardHeader>
                               <CardContent>
-                                <div className="mb-3 rounded-md border border-border/60 bg-muted/20 px-3 py-3">
+                                <div className="mb-3 rounded-md border border-border/60 bg-background px-3 py-3">
                                   <ReactMarkdown components={MARKDOWN_COMPONENTS}>
                                     {vuln.description}
                                   </ReactMarkdown>
@@ -1091,53 +1091,53 @@ const RepositoryDetail = () => {
                                   <p className="text-xs text-muted-foreground mb-3">AI Analysis: {vuln.reason}</p>
                                 )}
 
-                                <div className="mb-3 rounded-md border border-rose-400/45 bg-rose-500/10 px-3 py-3">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-rose-300 mb-1">Affected Line</p>
+                                <div className="mb-3 rounded-md border border-border/70 bg-background px-3 py-3">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Affected Line</p>
                                   {vuln.affected_line_link ? (
                                     <a
                                       href={vuln.affected_line_link}
                                       target="_blank"
                                       rel="noreferrer"
-                                      className="text-sm text-rose-100 underline decoration-rose-300/70 hover:text-white"
+                                      className="text-sm text-foreground underline decoration-foreground/40 hover:text-primary"
                                     >
                                       {vuln.file_path || 'unknown-file'}{vuln.line_number ? `:${vuln.line_number}` : ''}
                                     </a>
                                   ) : (
-                                    <p className="text-sm text-rose-100">{vuln.file_path || 'unknown-file'}{vuln.line_number ? `:${vuln.line_number}` : ''}</p>
+                                    <p className="text-sm text-foreground">{vuln.file_path || 'unknown-file'}{vuln.line_number ? `:${vuln.line_number}` : ''}</p>
                                   )}
                                 </div>
 
                                 {vuln.code_snippet && (
-                                  <pre className="bg-amber-500/10 border border-amber-400/45 p-4 rounded-md text-xs font-mono overflow-x-auto mb-3 text-amber-50">
+                                  <pre className="bg-slate-950 border border-slate-700 p-4 rounded-md text-xs font-mono overflow-x-auto mb-3 text-slate-100">
                                     <code>{vuln.code_snippet}</code>
                                   </pre>
                                 )}
 
                                 {(vuln.vulnerable_parameter || vuln.malicious_payload || vuln.exploit_injected_example || vuln.exploit_explanation || vuln.impact_summary) && (
                                   <div className="space-y-3 mb-3">
-                                    <div className="rounded-md border border-fuchsia-400/45 bg-fuchsia-500/10 px-3 py-3">
-                                      <p className="text-xs font-semibold uppercase tracking-wide text-fuchsia-200 mb-1">Vulnerable Parameter</p>
-                                      <p className="text-sm text-fuchsia-50">{vuln.vulnerable_parameter || 'user_input'}</p>
+                                    <div className="rounded-md border border-border/70 bg-background px-3 py-3">
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Vulnerable Parameter</p>
+                                      <p className="text-sm text-foreground">{vuln.vulnerable_parameter || 'user_input'}</p>
                                     </div>
 
-                                    <div className="rounded-md border border-orange-400/45 bg-orange-500/10 px-3 py-3">
-                                      <p className="text-xs font-semibold uppercase tracking-wide text-orange-200 mb-1">Malicious Payload (raw)</p>
-                                      <pre className="text-xs font-mono whitespace-pre-wrap break-words text-orange-50">{vuln.malicious_payload || '<attacker_payload>'}</pre>
+                                    <div className="rounded-md border border-border/70 bg-background px-3 py-3">
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Malicious Payload (raw)</p>
+                                      <pre className="bg-slate-950 border border-slate-700 p-3 rounded-md text-xs font-mono whitespace-pre-wrap break-words text-slate-100">{vuln.malicious_payload || '<attacker_payload>'}</pre>
                                     </div>
 
-                                    <div className="rounded-md border border-cyan-400/45 bg-cyan-500/10 px-3 py-3">
-                                      <p className="text-xs font-semibold uppercase tracking-wide text-cyan-200 mb-1">Payload Inserted In Function</p>
-                                      <pre className="text-xs font-mono whitespace-pre-wrap break-words text-cyan-50">{vuln.exploit_injected_example}</pre>
+                                    <div className="rounded-md border border-border/70 bg-background px-3 py-3">
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Payload Inserted In Function</p>
+                                      <pre className="bg-slate-950 border border-slate-700 p-3 rounded-md text-xs font-mono whitespace-pre-wrap break-words text-slate-100">{vuln.exploit_injected_example}</pre>
                                     </div>
 
-                                    <div className="rounded-md border border-indigo-400/45 bg-indigo-500/10 px-3 py-3">
-                                      <p className="text-xs font-semibold uppercase tracking-wide text-indigo-200 mb-1">How Payload Flows (Theory)</p>
-                                      <p className="text-sm text-indigo-50">{vuln.exploit_explanation || vuln.reason}</p>
+                                    <div className="rounded-md border border-border/70 bg-background px-3 py-3">
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">How Payload Flows (Theory)</p>
+                                      <p className="text-sm text-foreground">{vuln.exploit_explanation || vuln.reason}</p>
                                     </div>
 
-                                    <div className="rounded-md border border-red-400/45 bg-red-500/10 px-3 py-3">
-                                      <p className="text-xs font-semibold uppercase tracking-wide text-red-200 mb-1">Data Loss / Leak Impact</p>
-                                      <p className="text-sm text-red-50">{vuln.impact_summary}</p>
+                                    <div className="rounded-md border border-border/70 bg-background px-3 py-3">
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Data Loss / Leak Impact</p>
+                                      <p className="text-sm text-foreground">{vuln.impact_summary}</p>
                                     </div>
                                   </div>
                                 )}
