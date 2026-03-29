@@ -737,7 +737,7 @@ const RepositoryDetail = () => {
           toast.error(active.error || active.error_message || 'Scan failed');
           fetchData(false);
         }
-      } catch (e) {
+      } catch {
         // Ignore polling hiccups; WebSocket may still deliver completion.
       }
     }, 5000);
