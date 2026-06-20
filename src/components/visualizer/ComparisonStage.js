@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Shield, Zap, ChevronDown, ChevronUp, Eye } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Shield, Zap, ChevronDown, ChevronUp } from 'lucide-react';
 import { Badge } from '../ui/badge';
 
 const SEVERITY_COLORS = {
@@ -16,29 +16,30 @@ const ComparisonStage = ({ data }) => {
 
   const traditionalCount = data?.traditional_count || 0;
   const dynamicCount = data?.dynamic_only_count || 0;
-  const traditionalSev = data?.traditional_severity || {};
-  const dynamicSev = data?.dynamic_severity || {};
   const dynamicFindings = data?.dynamic_only_findings || [];
-  const traditionalFindings = data?.traditional_findings || [];
-
-  const chartData = useMemo(() => [
-    {
-      name: 'Traditional',
-      critical: traditionalSev.critical || 0,
-      high: traditionalSev.high || 0,
-      medium: traditionalSev.medium || 0,
-      low: traditionalSev.low || 0,
-      total: traditionalCount,
-    },
-    {
-      name: 'Fixora Dynamic',
-      critical: dynamicSev.critical || 0,
-      high: dynamicSev.high || 0,
-      medium: dynamicSev.medium || 0,
-      low: dynamicSev.low || 0,
-      total: dynamicCount,
-    },
-  ], [traditionalCount, dynamicCount, traditionalSev, dynamicSev]);
+  
+  const chartData = useMemo(() => {
+    const tSev = data?.traditional_severity || {};
+    const dSev = data?.dynamic_severity || {};
+    return [
+      {
+        name: 'Traditional',
+        critical: tSev.critical || 0,
+        high: tSev.high || 0,
+        medium: tSev.medium || 0,
+        low: tSev.low || 0,
+        total: data?.traditional_count || 0,
+      },
+      {
+        name: 'Fixora Dynamic',
+        critical: dSev.critical || 0,
+        high: dSev.high || 0,
+        medium: dSev.medium || 0,
+        low: dSev.low || 0,
+        total: data?.dynamic_only_count || 0,
+      },
+    ];
+  }, [data]);
 
   const totalFindings = traditionalCount + dynamicCount;
 

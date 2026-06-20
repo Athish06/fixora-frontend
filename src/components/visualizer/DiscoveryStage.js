@@ -46,8 +46,6 @@ const ModuleChip = ({ name, index, source }) => {
 };
 
 const DiscoveryStage = ({ data }) => {
-  const languages = data?.languages || {};
-
   const langEntries = useMemo(() => Object.entries(data?.languages || {}), [data?.languages]);
 
   if (!langEntries.length) {
