@@ -183,6 +183,12 @@ export const api = {
     return response.data;
   },
 
+  // Visualizer
+  getVisualizerTrace: async (scanId) => {
+    const response = await axios.get(`${API}/visualizer/trace/${scanId}`, { headers: getHeaders() });
+    return response.data;
+  },
+
   getScanDebug: async (repoId) => {
     const response = await axios.get(
       `${API}/ai-debug/repo/${repoId}`,

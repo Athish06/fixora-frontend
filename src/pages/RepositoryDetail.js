@@ -6,12 +6,13 @@ import {
   ArrowLeft, GitBranch, FileCode, AlertTriangle, 
   Folder, ChevronRight, ChevronDown,
   Loader2, CheckCircle, Clock, Shield, GitCommit, Scan, Bug,
-  Terminal, Cpu, Zap, Database, Code2, Bot, RefreshCw, Copy, Check
+  Terminal, Cpu, Zap, Database, Code2, Bot, RefreshCw, Copy, Check, Eye
 } from 'lucide-react';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import ScanVisualizer from './ScanVisualizer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Progress } from '../components/ui/progress';
 import { ScrollArea } from '../components/ui/scroll-area';
@@ -901,24 +902,35 @@ const RepositoryDetail = () => {
               <h1 className="text-4xl font-bold mb-2">{repo?.name}</h1>
               <p className="text-muted-foreground text-lg">{repo?.full_name}</p>
             </div>
-            <Button
-              onClick={handleStartScan}
-              disabled={scanning}
-              className="bg-primary hover:bg-primary/90"
-              data-testid="start-scan-button"
-            >
-              {scanning ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Scanning...
-                </>
-              ) : (
-                <>
-                  <Scan className="w-4 h-4 mr-2" />
-                  Start Scan
-                </>
+            <div className="flex items-center gap-3">
+              {repo?.latest_scan_id && (
+                <Link
+                  to={`/repositories/${id}/demo-visualizer`}
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 h-9 px-4 py-2"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  View Pipeline Animation
+                </Link>
               )}
-            </Button>
+              <Button
+                onClick={handleStartScan}
+                disabled={scanning}
+                className="bg-primary hover:bg-primary/90"
+                data-testid="start-scan-button"
+              >
+                {scanning ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Scanning...
+                  </>
+                ) : (
+                  <>
+                    <Scan className="w-4 h-4 mr-2" />
+                    Start Scan
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -1082,7 +1094,7 @@ const RepositoryDetail = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="files" className="space-y-6" onValueChange={handleTabChange}>
-          <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-4 gap-4">
+          <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-5 gap-4">
             <TabsTrigger value="files" data-testid="tab-files">
               <Folder className="w-4 h-4 mr-2" />
               Files
@@ -1094,6 +1106,10 @@ const RepositoryDetail = () => {
             <TabsTrigger value="scans" data-testid="tab-scans">
               <Scan className="w-4 h-4 mr-2" />
               Scan History
+            </TabsTrigger>
+            <TabsTrigger value="visualizer" data-testid="tab-visualizer">
+              <Eye className="w-4 h-4 mr-2" />
+              Visualizer
             </TabsTrigger>
             <TabsTrigger value="ai-patterns" data-testid="tab-patterns">
               <Bot className="w-4 h-4 mr-2" />
@@ -1373,6 +1389,33 @@ const RepositoryDetail = () => {
                 </motion.div>
               ))
             )}
+          </TabsContent>
+
+          {/* Visualizer Tab */}
+          <TabsContent value="visualizer">
+            <div className="bg-card border border-border/50 rounded-2xl shadow-sm p-4 md:p-6 min-h-[600px] flex flex-col relative">
+              <div className="absolute top-4 right-6 z-10">
+                <Link
+                  to={`/repositories/${id}/demo-visualizer`}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-md transition-colors"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  Presentation Mode
+                </Link>
+              </div>
+              <div className="flex-1 mt-4">
+                {repo?.latest_scan_id ? (
+                  <ScanVisualizer scanId={repo.latest_scan_id} repositoryId={id} />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
+                  <Eye className="w-12 h-12 text-muted-foreground/30" />
+                  <p className="text-muted-foreground text-sm max-w-sm">
+                    No scans have been run on this repository yet. Start a scan to view the pipeline visualizer.
+                  </p>
+                </div>
+              )}
+              </div>
+            </div>
           </TabsContent>
 
           {/* AI Debug Tab */}
