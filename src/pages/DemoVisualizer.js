@@ -10,11 +10,22 @@ const DemoVisualizer = () => {
   const [repo, setRepo] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [scanId, setScanId] = useState(null);
+
   useEffect(() => {
     const fetchRepo = async () => {
       try {
         const data = await api.getRepository(id);
         setRepo(data);
+        if (data.latest_scan_id) {
+          setScanId(data.latest_scan_id);
+        } else {
+          // Fallback for legacy records without latest_scan_id
+          const scans = await api.getRepoScans(id, 1);
+          if (scans && scans.length > 0) {
+            setScanId(scans[0].scan_id || scans[0].id);
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch repository for demo', error);
       } finally {
@@ -97,8 +108,8 @@ const DemoVisualizer = () => {
              <div className="flex flex-col items-center justify-center py-20 gap-3">
                <Loader2 className="w-10 h-10 animate-spin text-primary" />
              </div>
-          ) : repo?.latest_scan_id ? (
-            <ScanVisualizer scanId={repo.latest_scan_id} repositoryId={id} />
+          ) : scanId ? (
+            <ScanVisualizer scanId={scanId} repositoryId={id} />
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
               <Eye className="w-12 h-12 text-muted-foreground/30" />
