@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FileCode, Activity, Cpu, Shield, AlertTriangle, ShieldCheck, CheckCircle2, ChevronRightCircle } from 'lucide-react';
 import { Badge } from '../ui/badge';
-import api from '../../services/api';
+import { api } from '../../services/api';
 
 const ASTTreeView = ({ scanId, filePath, functionName, onClose }) => {
   const [treeData, setTreeData] = useState(null);
@@ -248,7 +248,7 @@ const ASTWalkStage = ({ data, scanId }) => {
               onChange={(e) => setSelectedFile(files.find(f => f.file === e.target.value))}
             >
               {files.map(f => (
-                <option key={f.file} value={f.file}>{f.file.split('/').pop()}</option>
+                <option key={f.file} value={f.file}>{f.file}</option>
               ))}
             </select>
           </div>
