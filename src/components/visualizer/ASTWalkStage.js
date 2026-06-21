@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { FileCode, Activity, Cpu, Shield, AlertTriangle, ShieldCheck, CheckCircle2, ChevronRightCircle } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { api } from '../../services/api';
+import ReactFlowAST from './ReactFlowAST';
 
 const ASTTreeView = ({ scanId, filePath, functionName, onClose }) => {
   const [treeData, setTreeData] = useState(null);
@@ -54,136 +55,23 @@ const ASTTreeView = ({ scanId, filePath, functionName, onClose }) => {
   if (!treeData) return null;
 
   return (
-    <div className="p-4 bg-black/40 rounded-xl border border-border/50 relative overflow-hidden">
-      {/* Background connection line */}
-      <div className="absolute left-8 top-12 bottom-12 w-0.5 bg-border/50 z-0" />
-
-      {/* Root Node: Function Definition */}
-      <motion.div 
-        className="relative z-10 flex items-start gap-3 mb-6"
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-      >
+    <div className="w-full h-full min-h-[600px] relative flex flex-col">
+      <div className="absolute top-4 left-4 z-10 bg-card/80 backdrop-blur-md p-3 rounded-lg border border-border/50 shadow-sm flex items-center gap-3">
         <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center shrink-0">
           <FileCode className="w-4 h-4 text-primary" />
         </div>
-        <div className="bg-card border border-border/50 p-3 rounded-lg flex-1 shadow-sm">
-          <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
             <code className="text-sm font-semibold text-primary">{treeData.function_name}()</code>
             <Badge variant="outline" className="text-[10px] font-mono text-muted-foreground">
               L{treeData.line_start}-{treeData.line_end}
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">Function Definition Root</p>
+          <p className="text-xs text-muted-foreground mt-1">Hierarchical AST Graph</p>
         </div>
-      </motion.div>
-
-      {/* Children: Call Nodes */}
-      <div className="space-y-4 relative z-10">
-        {treeData.children.map((child, idx) => {
-          const isSink = child.is_sink;
-          const isAmbiguous = child.confidence === "name_match_unambiguous";
-          
-          let borderColor = "border-border/50";
-          let bgColor = "bg-card";
-          let icon = <CheckCircle2 className="w-4 h-4 text-muted-foreground/60" />;
-          let iconBg = "bg-muted border-border/50";
-
-          if (isSink) {
-            if (isAmbiguous) {
-              borderColor = "border-orange-500/50";
-              bgColor = "bg-orange-500/5";
-              icon = <AlertTriangle className="w-4 h-4 text-orange-400" />;
-              iconBg = "bg-orange-500/20 border-orange-500/40";
-            } else {
-              borderColor = "border-red-500/50";
-              bgColor = "bg-red-500/10";
-              icon = <Shield className="w-4 h-4 text-red-500" />;
-              iconBg = "bg-red-500/20 border-red-500/40";
-            }
-          } else if (child.call === "<plaintext-password-comparison>()") {
-            borderColor = "border-red-500/50";
-            bgColor = "bg-red-500/10";
-            icon = <Shield className="w-4 h-4 text-red-500" />;
-            iconBg = "bg-red-500/20 border-red-500/40";
-          } else {
-            icon = <ShieldCheck className="w-4 h-4 text-emerald-500" />;
-            iconBg = "bg-emerald-500/10 border-emerald-500/30";
-          }
-
-          return (
-            <motion.div 
-              key={idx}
-              className="flex items-start gap-3 pl-4"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 + (idx * 0.15) }}
-            >
-              <div className="mt-2 w-4 h-0.5 bg-border/50 shrink-0" />
-              <div className={`w-8 h-8 rounded-full ${iconBg} border flex items-center justify-center shrink-0 z-10`}>
-                {icon}
-              </div>
-              <div className={`flex-1 border ${borderColor} ${bgColor} p-3 rounded-lg shadow-sm`}>
-                <div className="flex justify-between items-start">
-                  <code className="text-sm text-foreground font-mono">{child.call}</code>
-                  {child.line && <span className="text-[10px] text-muted-foreground font-mono">L{child.line}</span>}
-                </div>
-                
-                {(isSink || child.resolved_module) && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {child.resolved_module && (
-                      <Badge variant="outline" className="text-[10px] bg-background border-border/50">
-                        module: {child.resolved_module}
-                      </Badge>
-                    )}
-                    {child.category && (
-                      <Badge variant="outline" className={`text-[10px] ${isAmbiguous ? 'border-orange-500/30 text-orange-400' : 'border-red-500/30 text-red-400'}`}>
-                        {child.category}
-                      </Badge>
-                    )}
-                  </div>
-                )}
-                
-                {child.note && (
-                  <p className={`mt-2 text-xs ${isSink ? (isAmbiguous ? 'text-orange-400/80' : 'text-red-400/80') : 'text-muted-foreground'}`}>
-                    {child.note}
-                  </p>
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
-
-        {/* Terminal Node: Packaged for AI */}
-        {treeData.children.some(c => c.is_sink || c.call === "<plaintext-password-comparison>()") && (
-          <motion.div 
-            className="flex items-start gap-3 pl-4 mt-6"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 + (treeData.children.length * 0.15) + 0.3 }}
-          >
-            <div className="mt-4 w-4 h-0.5 bg-border/50 shrink-0" />
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center shrink-0 z-10">
-                <Cpu className="w-4 h-4 text-indigo-400" />
-              </div>
-              <motion.div 
-                className="h-8 w-0.5 bg-indigo-500/30"
-                animate={{ opacity: [0.3, 1, 0.3] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              />
-            </div>
-            <div className="flex-1 border border-indigo-500/30 bg-indigo-500/5 p-3 rounded-lg shadow-sm">
-              <h4 className="text-sm font-medium text-indigo-400 flex items-center gap-2">
-                <ChevronRightCircle className="w-4 h-4" />
-                Packaged for AI Analysis
-              </h4>
-              <p className="text-xs text-muted-foreground mt-1">
-                Wrapper function source and context successfully extracted and forwarded to LLM Phase 1 for vulnerability assessment.
-              </p>
-            </div>
-          </motion.div>
-        )}
+      </div>
+      <div className="flex-1 w-full h-[600px]">
+        <ReactFlowAST treeData={treeData.ast_tree} />
       </div>
     </div>
   );
