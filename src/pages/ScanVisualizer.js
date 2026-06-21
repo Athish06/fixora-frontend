@@ -245,7 +245,7 @@ const ScanVisualizer = ({ scanId, traceData, repositoryId }) => {
             exit="exit"
           >
             {StageComponent ? (
-              <StageComponent data={currentStage} />
+              <StageComponent data={currentStage} scanId={state.trace?.scan_id} />
             ) : (
               <div className="py-16 text-center text-muted-foreground">
                 Unknown stage: {currentStage?.id}
