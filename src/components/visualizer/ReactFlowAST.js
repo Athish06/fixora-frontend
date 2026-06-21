@@ -161,7 +161,7 @@ const ReactFlowAST = ({ treeData }) => {
   }, [treeData, setNodes, setEdges]);
 
   return (
-    <div className="w-full h-full min-h-[600px] border border-border/50 rounded-xl overflow-hidden bg-black/40">
+    <div className="w-full h-full border border-border/50 rounded-xl overflow-hidden bg-black/40">
       <ReactFlow
         nodes={nodes}
         edges={edges}

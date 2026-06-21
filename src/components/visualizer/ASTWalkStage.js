@@ -55,7 +55,7 @@ const ASTTreeView = ({ scanId, filePath, functionName, onClose }) => {
   if (!treeData) return null;
 
   return (
-    <div className="w-full h-full min-h-[600px] relative flex flex-col">
+    <div className="w-full h-full relative flex flex-col overflow-hidden">
       <div className="absolute top-4 left-4 z-10 bg-card/80 backdrop-blur-md p-3 rounded-lg border border-border/50 shadow-sm flex items-center gap-3">
         <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center shrink-0">
           <FileCode className="w-4 h-4 text-primary" />
@@ -70,8 +70,10 @@ const ASTTreeView = ({ scanId, filePath, functionName, onClose }) => {
           <p className="text-xs text-muted-foreground mt-1">Hierarchical AST Graph</p>
         </div>
       </div>
-      <div className="flex-1 w-full h-[600px]">
-        <ReactFlowAST treeData={treeData.ast_tree} />
+      <div className="flex-1 w-full relative">
+        <div className="absolute inset-0">
+          <ReactFlowAST treeData={treeData.ast_tree} />
+        </div>
       </div>
     </div>
   );
@@ -125,9 +127,9 @@ const ASTWalkStage = ({ data, scanId }) => {
       </motion.div>
 
       {/* Interactive AST Explorer */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-200px)]">
         {/* Sidebar: Picker */}
-        <div className="col-span-1 border border-border/50 bg-card rounded-xl overflow-hidden flex flex-col h-[500px]">
+        <div className="col-span-1 border border-border/50 bg-card rounded-xl overflow-hidden flex flex-col h-full">
           <div className="p-3 border-b border-border/50 bg-muted/20">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Select File</h3>
             <select 
@@ -165,7 +167,7 @@ const ASTWalkStage = ({ data, scanId }) => {
         </div>
 
         {/* Main Area: AST Tree */}
-        <div className="col-span-1 md:col-span-2 border border-border/50 bg-card rounded-xl overflow-y-auto h-[500px] p-4 relative">
+        <div className="col-span-1 md:col-span-2 border border-border/50 bg-card rounded-xl h-full relative flex flex-col overflow-hidden">
           {selectedFunction ? (
             selectedFunction.has_source ? (
               <ASTTreeView 

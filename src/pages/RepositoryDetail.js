@@ -902,6 +902,12 @@ const RepositoryDetail = () => {
               <p className="text-muted-foreground text-lg">{repo?.full_name}</p>
             </div>
             <div className="flex items-center gap-3">
+              <Link to={`/repositories/${id}/demo-visualizer`}>
+                <Button variant="outline" className="gap-2 border-border/50 text-foreground hover:text-primary">
+                  <Eye className="w-4 h-4" />
+                  Visualize
+                </Button>
+              </Link>
               <Button
                 onClick={handleStartScan}
                 disabled={scanning}
@@ -1084,7 +1090,7 @@ const RepositoryDetail = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="files" className="space-y-6" onValueChange={handleTabChange}>
-          <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-5 gap-4">
+          <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-4 gap-4">
             <TabsTrigger value="files" data-testid="tab-files">
               <Folder className="w-4 h-4 mr-2" />
               Files
@@ -1096,10 +1102,6 @@ const RepositoryDetail = () => {
             <TabsTrigger value="scans" data-testid="tab-scans">
               <Scan className="w-4 h-4 mr-2" />
               Scan History
-            </TabsTrigger>
-            <TabsTrigger value="visualizer" data-testid="tab-visualizer">
-              <Eye className="w-4 h-4 mr-2" />
-              Visualizer
             </TabsTrigger>
             <TabsTrigger value="ai-patterns" data-testid="tab-patterns">
               <Bot className="w-4 h-4 mr-2" />
@@ -1381,26 +1383,7 @@ const RepositoryDetail = () => {
             )}
           </TabsContent>
 
-          {/* Visualizer Tab */}
-          <TabsContent value="visualizer">
-            <div className="bg-card border border-border/50 rounded-2xl shadow-sm p-4 md:p-6 min-h-[600px] flex flex-col">
-              <div className="flex-1">
-                {(() => {
-                  const visualizerScanId = repo?.latest_scan_id || (scans?.length > 0 ? (scans[0].scan_id || scans[0].id) : null);
-                  return visualizerScanId ? (
-                    <ScanVisualizer scanId={visualizerScanId} repositoryId={id} />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
-                      <Eye className="w-12 h-12 text-muted-foreground/30" />
-                      <p className="text-muted-foreground text-sm max-w-sm">
-                        No scans have been run on this repository yet. Start a scan to view the pipeline visualizer.
-                      </p>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-          </TabsContent>
+
 
           {/* AI Debug Tab */}
           <TabsContent value="ai-patterns">
