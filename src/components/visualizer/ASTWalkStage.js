@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileCode, Activity, Cpu, Shield, AlertTriangle, ShieldCheck, CheckCircle2, ChevronRightCircle } from 'lucide-react';
+import { FileCode, Activity, AlertTriangle } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { api } from '../../services/api';
 import ReactFlowAST from './ReactFlowAST';
