@@ -57,27 +57,30 @@ const CustomASTNode = ({ data }) => {
 
   let borderColor = 'border-border/50';
   let bgColor = 'bg-card';
+  let shadow = 'shadow-sm dark:shadow-none';
   let icon = <Code className="w-4 h-4 text-muted-foreground/60" />;
 
   if (is_sink) {
     if (category === 'Name Match' || category === 'Import Resolved' || category === 'Builtin') {
-      borderColor = 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]';
-      bgColor = 'bg-red-500/10';
+      borderColor = 'border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.2)] dark:shadow-[0_0_15px_rgba(239,68,68,0.3)]';
+      bgColor = 'bg-red-50 dark:bg-red-500/10';
+      shadow = '';
       icon = <AlertTriangle className="w-4 h-4 text-red-500" />;
     } else {
-      borderColor = 'border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.3)]';
-      bgColor = 'bg-orange-500/10';
+      borderColor = 'border-orange-500/40 shadow-[0_0_15px_rgba(249,115,22,0.2)] dark:shadow-[0_0_15px_rgba(249,115,22,0.3)]';
+      bgColor = 'bg-orange-50 dark:bg-orange-500/10';
+      shadow = '';
       icon = <AlertTriangle className="w-4 h-4 text-orange-500" />;
     }
   } else if (type === 'Call') {
-    borderColor = 'border-blue-500/50';
-    bgColor = 'bg-blue-500/5';
+    borderColor = 'border-blue-500/30';
+    bgColor = 'bg-blue-50 dark:bg-blue-500/5';
     icon = <PlayCircle className="w-4 h-4 text-blue-500" />;
   }
 
   return (
     <div
-      className={`min-w-[200px] max-w-[280px] p-3 rounded-lg border ${borderColor} ${bgColor} backdrop-blur-sm transition-all`}
+      className={`min-w-[200px] max-w-[280px] p-3 rounded-lg border ${borderColor} ${bgColor} ${shadow} backdrop-blur-sm transition-all`}
     >
       <Handle type="target" position={Position.Top} className="!bg-muted-foreground" />
       <div className="flex items-center gap-2 mb-2">
@@ -161,7 +164,7 @@ const ReactFlowAST = ({ treeData }) => {
   }, [treeData, setNodes, setEdges]);
 
   return (
-    <div className="w-full h-full border border-border/50 rounded-xl overflow-hidden bg-black/40">
+    <div className="w-full h-full border border-border/50 rounded-xl overflow-hidden bg-muted/20 dark:bg-background">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -173,7 +176,7 @@ const ReactFlowAST = ({ treeData }) => {
         maxZoom={1.5}
         attributionPosition="bottom-right"
       >
-        <Background color="#333" gap={16} />
+        <Background color="#888" gap={16} className="opacity-20 dark:opacity-40" />
         <Controls />
       </ReactFlow>
     </div>
