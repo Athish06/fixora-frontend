@@ -7,11 +7,16 @@ import {
   useEdgesState,
   Handle,
   Position,
+  Panel,
+  useReactFlow,
+  getNodesBounds,
+  getViewportForBounds
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
-import { AlertTriangle, Code, PlayCircle } from 'lucide-react';
+import { AlertTriangle, Code, PlayCircle, Download } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import { toPng, toSvg } from 'html-to-image';
 
 // DAGRE layout setup
 const dagreGraph = new dagre.graphlib.Graph();
@@ -106,6 +111,65 @@ const nodeTypes = {
   astNode: CustomASTNode,
 };
 
+function DownloadPanel() {
+  const { getNodes } = useReactFlow();
+
+  const downloadImage = (format) => {
+    const nodesBounds = getNodesBounds(getNodes());
+    // Adding 100px padding around the tree
+    const imageWidth = nodesBounds.width + 100;
+    const imageHeight = nodesBounds.height + 100;
+
+    const transform = getViewportForBounds(
+      nodesBounds,
+      imageWidth,
+      imageHeight,
+      0.5,
+      2
+    );
+
+    const viewport = document.querySelector('.react-flow__viewport');
+    if (!viewport) return;
+
+    const func = format === 'png' ? toPng : toSvg;
+
+    func(viewport, {
+      backgroundColor: document.documentElement.classList.contains('dark') ? '#020817' : '#f8fafc',
+      width: imageWidth,
+      height: imageHeight,
+      style: {
+        width: `${imageWidth}px`,
+        height: `${imageHeight}px`,
+        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
+      },
+    }).then((dataUrl) => {
+      const a = document.createElement('a');
+      a.setAttribute('download', `fixora-ast.${format}`);
+      a.setAttribute('href', dataUrl);
+      a.click();
+    }).catch((err) => {
+      console.error('Failed to export image', err);
+    });
+  };
+
+  return (
+    <Panel position="top-right" className="flex gap-2">
+      <button 
+        onClick={() => downloadImage('png')}
+        className="bg-card border border-border/50 text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm hover:bg-muted text-foreground transition-colors flex items-center gap-1.5"
+      >
+        <Download className="w-3.5 h-3.5" /> PNG
+      </button>
+      <button 
+        onClick={() => downloadImage('svg')}
+        className="bg-card border border-border/50 text-xs font-semibold py-1.5 px-3 rounded-md shadow-sm hover:bg-muted text-foreground transition-colors flex items-center gap-1.5"
+      >
+        <Download className="w-3.5 h-3.5" /> SVG
+      </button>
+    </Panel>
+  );
+}
+
 const ReactFlowAST = ({ treeData }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -178,6 +242,7 @@ const ReactFlowAST = ({ treeData }) => {
       >
         <Background color="#888" gap={16} className="opacity-20 dark:opacity-40" />
         <Controls />
+        <DownloadPanel />
       </ReactFlow>
     </div>
   );
