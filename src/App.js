@@ -13,7 +13,6 @@ import AIKnowledgeBase from './pages/AIKnowledgeBase';
 import ActivityLog from './pages/ActivityLog';
 import Settings from './pages/Settings';
 import GitHubCallback from './pages/GitHubCallback';
-import DemoVisualizer from './pages/DemoVisualizer';
 import './App.css';
 
 const PrivateRoute = ({ children }) => {
@@ -49,7 +48,6 @@ function App() {
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/repositories" element={<PrivateRoute><Repositories /></PrivateRoute>} />
           <Route path="/repositories/:id" element={<PrivateRoute><RepositoryDetail /></PrivateRoute>} />
-          <Route path="/repositories/:id/demo-visualizer" element={<PrivateRoute><DemoVisualizer /></PrivateRoute>} />
           <Route path="/vulnerabilities" element={<PrivateRoute><VulnerabilityFeed /></PrivateRoute>} />
           <Route path="/ai-knowledge" element={<PrivateRoute><AIKnowledgeBase /></PrivateRoute>} />
           <Route path="/activity" element={<PrivateRoute><ActivityLog /></PrivateRoute>} />

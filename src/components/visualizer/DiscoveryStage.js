@@ -59,7 +59,7 @@ const DiscoveryStage = ({ data }) => {
   return (
     <div className="space-y-6">
       {langEntries.map(([lang, mods]) => {
-        const langLabel = lang === 'python' ? '🐍 Python' : '⚛️ JavaScript / React';
+        const langLabel = lang === 'python' ? 'Python' : 'JavaScript / React';
         const manifestMods = mods.from_manifest || [];
         const importMods = mods.from_imports || [];
 

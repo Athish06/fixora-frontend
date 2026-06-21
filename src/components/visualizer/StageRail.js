@@ -1,14 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, Circle, ChevronRight } from 'lucide-react';
+import { CheckCircle, Circle, ChevronRight, Package, GitBranch, Brain, Cpu, BarChart3 } from 'lucide-react';
 
 const STAGE_ICONS = {
-  discovery: '📦',
-  ast_walk: '🌳',
-  llm_phase1: '🧠',
-  llm_phase2: '🔬',
-  rule_generation: '⚡',
-  scan_comparison: '📊',
+  discovery: Package,
+  ast_walk: GitBranch,
+  llm_phase1: Brain,
+  llm_phase2: Cpu,
+  scan_comparison: BarChart3,
 };
 
 const StageRail = ({ stages, currentIndex, onStageClick }) => {
@@ -18,7 +17,7 @@ const StageRail = ({ stages, currentIndex, onStageClick }) => {
         {stages.map((stage, index) => {
           const isActive = index === currentIndex;
           const isCompleted = index < currentIndex;
-          const icon = STAGE_ICONS[stage.id] || '📌';
+          const IconComponent = STAGE_ICONS[stage.id] || Circle;
 
           return (
             <React.Fragment key={stage.id}>
@@ -55,12 +54,12 @@ const StageRail = ({ stages, currentIndex, onStageClick }) => {
                 {isCompleted ? (
                   <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
                 ) : isActive ? (
-                  <motion.span
+                  <motion.div
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
-                    {icon}
-                  </motion.span>
+                    <IconComponent className="w-3.5 h-3.5" />
+                  </motion.div>
                 ) : (
                   <Circle className="w-3.5 h-3.5 text-muted-foreground/40" />
                 )}

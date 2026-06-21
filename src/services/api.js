@@ -156,6 +156,17 @@ export const api = {
     return response.data;
   },
 
+  getASTTree: async (scanId, filePath, functionName) => {
+    const response = await axios.get(
+      `${API}/visualizer/ast-tree/${scanId}`,
+      { 
+        params: { file_path: filePath, function_name: functionName },
+        headers: getHeaders() 
+      }
+    );
+    return response.data;
+  },
+
   // Scanning
   setupRepoForScanning: async (repoId) => {
     const response = await axios.post(

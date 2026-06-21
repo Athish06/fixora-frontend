@@ -8,7 +8,6 @@ import DiscoveryStage from '../components/visualizer/DiscoveryStage';
 import ASTWalkStage from '../components/visualizer/ASTWalkStage';
 import LLMPhase1Stage from '../components/visualizer/LLMPhase1Stage';
 import LLMPhase2Stage from '../components/visualizer/LLMPhase2Stage';
-import RuleGenStage from '../components/visualizer/RuleGenStage';
 import ComparisonStage from '../components/visualizer/ComparisonStage';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -58,7 +57,6 @@ const STAGE_COMPONENTS = {
   ast_walk: ASTWalkStage,
   llm_phase1: LLMPhase1Stage,
   llm_phase2: LLMPhase2Stage,
-  rule_generation: RuleGenStage,
   scan_comparison: ComparisonStage,
 };
 

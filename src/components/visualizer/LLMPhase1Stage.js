@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Brain, ArrowRight, AlertOctagon } from 'lucide-react';
+import { Brain, ArrowRight, AlertOctagon, ClipboardList } from 'lucide-react';
 
 const LLMPhase1Stage = ({ data }) => {
   const sinkReasons = data?.sink_reasons || {};
@@ -28,7 +28,7 @@ const LLMPhase1Stage = ({ data }) => {
           transition={{ delay: 0.2, type: 'spring' }}
         >
           <div className="w-16 h-16 rounded-xl bg-muted/50 border border-border/50 flex items-center justify-center">
-            <span className="text-2xl">📋</span>
+            <ClipboardList className="w-7 h-7 text-muted-foreground" />
           </div>
           <span className="text-[10px] text-muted-foreground">Module List</span>
         </motion.div>
@@ -109,7 +109,7 @@ const LLMPhase1Stage = ({ data }) => {
 
       {/* Sink modules per language */}
       {langEntries.map(([lang, mods], langIndex) => {
-        const langLabel = lang === 'python' ? '🐍 Python' : '⚛️ JavaScript';
+        const langLabel = lang === 'python' ? 'Python' : 'JavaScript';
         const reason = sinkReasons[lang] || '';
 
         return (

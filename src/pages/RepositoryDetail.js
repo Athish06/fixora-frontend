@@ -902,19 +902,6 @@ const RepositoryDetail = () => {
               <p className="text-muted-foreground text-lg">{repo?.full_name}</p>
             </div>
             <div className="flex items-center gap-3">
-              {(() => {
-                const visualizerScanId = repo?.latest_scan_id || (scans?.length > 0 ? (scans[0].scan_id || scans[0].id) : null);
-                if (!visualizerScanId) return null;
-                return (
-                  <Link
-                    to={`/repositories/${id}/demo-visualizer`}
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 h-9 px-4 py-2"
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    Visualize
-                  </Link>
-                );
-              })()}
               <Button
                 onClick={handleStartScan}
                 disabled={scanning}
@@ -1396,17 +1383,8 @@ const RepositoryDetail = () => {
 
           {/* Visualizer Tab */}
           <TabsContent value="visualizer">
-            <div className="bg-card border border-border/50 rounded-2xl shadow-sm p-4 md:p-6 min-h-[600px] flex flex-col relative">
-              <div className="absolute top-4 right-6 z-10">
-                <Link
-                  to={`/repositories/${id}/demo-visualizer`}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-md transition-colors"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  Presentation Mode
-                </Link>
-              </div>
-              <div className="flex-1 mt-4">
+            <div className="bg-card border border-border/50 rounded-2xl shadow-sm p-4 md:p-6 min-h-[600px] flex flex-col">
+              <div className="flex-1">
                 {(() => {
                   const visualizerScanId = repo?.latest_scan_id || (scans?.length > 0 ? (scans[0].scan_id || scans[0].id) : null);
                   return visualizerScanId ? (
