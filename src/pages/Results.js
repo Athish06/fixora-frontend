@@ -143,23 +143,26 @@ MIICWwIBAAKBgQDQ...`,
         score: 7,
         total: 11,
         falsePositives: 0,
+        duplicates: 0,
         description: 'Successfully found 7 critical vulnerability types (Eval, SSRF, XSS, Open Redirect, CSRF, Insecure Sessions, Hardcoded Secrets). Zero false positives. Missed highly contextual logic flaws (NoSQLi, IDOR, Cookie Deserialization) and SCA.'
       },
       vanillaSemgrep: {
         score: 7,
         total: 11,
         falsePositives: 3,
+        duplicates: 14,
         description: 'Found the same 7 vulnerability types, but generated 36 total noisy findings. Flagged 3 False Positives misidentifying Node.js templates as Django files.'
       },
       semgrepAi: {
         score: 0,
         total: 11,
         falsePositives: 0,
+        duplicates: 0,
         description: 'Awaiting Semgrep AI results...'
       }
     },
     missedLogs: `=== FIXORA - FALSE POSITIVES ===
-- None! (The Django FP was successfully mitigated by Fixora's intelligent language heuristic)
+- None!
 
 === FIXORA - MISSED VULNERABILITIES (4) ===
 1. NoSQL Injection (app/routes/allocations.js)
@@ -183,83 +186,151 @@ MIICWwIBAAKBgQDQ...`,
     description: 'A vulnerable REST API built with Flask containing OWASP API Top 10 vulnerabilities.',
     vulnerabilities: [
       {
-        name: 'Broken Access Control (BOLA / IDOR)',
-        whatIsIt: 'Broken Object Level Authorization (BOLA) or IDOR occurs when an application fails to properly verify if the requesting user has the permissions to access or modify a specific object. In VAmPI, the book retrieval endpoint blindly accepts a book title and returns the book details, even if it belongs to another user.',
-        file: 'api_views/books.py',
-        line: '51-63',
-        codeSnippet: `// Target Function: get_by_title()
-// Parameter: book_title
-
-book = Book.query.filter_by(book_title=book_title).first()
-if book:
-    return jsonify(book.serialize())`,
-        payload: 'book_title = another_user_book_title  // IDOR payload',
-        result: 'The attacker successfully accesses sensitive book records belonging to other users. This completely circumvents the intended tenant isolation and data privacy controls.'
-      },
-      {
-        name: 'Mass Assignment (Privilege Escalation)',
-        whatIsIt: 'Mass Assignment occurs when an application automatically assigns client-provided data (JSON or forms) to internal objects or database records without proper filtering. It allows attackers to modify object properties that they are not supposed to have access to.',
-        file: 'api_views/users.py',
-        line: '70',
-        codeSnippet: `// Target Function: register_user()
-// Parameter: request_data
-
-user = User(**request_data) 
-db.session.add(user)
-db.session.commit()`,
-        payload: '{"username": "test", "password": "test", "email": "test@example.com", "admin": true}',
-        result: 'The attacker-controlled JSON dictionary is unpacked directly into the database model. The attacker successfully injects "admin": true, instantly gaining root administrative privileges.'
-      },
-      {
-        name: 'SQL Injection via username',
-        whatIsIt: 'SQL Injection occurs when user input is interpolated directly into a database query string instead of being safely parameterized. This allows attackers to manipulate the query structure to bypass authentication or leak data.',
+        name: 'SQL Injection (SQLi)',
+        whatIsIt: 'SQL Injection occurs when user-supplied input is directly concatenated into a backend database query without proper parameterization or sanitization. VAmPI uses an SQLite database, and its lookup mechanisms fail to escape malicious characters.',
         file: 'models/user_model.py',
         line: '73',
-        codeSnippet: `// Target Function: get_user()
-// Parameter: username
-
-query = f"SELECT * FROM users WHERE username = '{username}'"
-db.session.execute(query)`,
-        payload: "' OR 1=1 --",
-        result: 'The payload converts the SQL predicate into an always-true condition, bypassing all authentication and dumping the entire users table.'
+        codeSnippet: `# Target Endpoint: GET /users/v1/{username}
+# Vulnerable Sink: Unsanitized input passed to SQLite execution
+query = f"SELECT * FROM users WHERE username = '{username}'"`,
+        payload: `admin' OR '1'='1`,
+        result: 'The attacker bypasses authentication or extracts the entire user database table by forcing the SQL statement to evaluate to true.'
+      },
+      {
+        name: 'Broken Object Level Authorization (BOLA / IDOR)',
+        whatIsIt: 'BOLA occurs when an API exposes an endpoint that handles object identifiers, but fails to check if the currently authenticated user actually has the permissions to access or modify that specific object.',
+        file: 'api_views/books.py',
+        line: '51',
+        codeSnippet: `# Target Endpoint: GET /books/v1/{book}
+# Vulnerable Sink: Returns book details without checking ownership
+book = get_book_by_title(book_title)
+return jsonify(book) # Missing: if current_user != book.owner_id: abort(403)`,
+        payload: 'GET /books/v1/UserB_BookTitle (while authenticated as User A)',
+        result: 'The attacker can view secrets or modify data belonging to other users, leading to horizontal privilege escalation.'
+      },
+      {
+        name: 'Mass Assignment',
+        whatIsIt: 'Mass assignment vulnerabilities occur when an API takes a client-supplied JSON object and blindly binds it to internal database models.',
+        file: 'api_views/users.py',
+        line: '70',
+        codeSnippet: `# Target Endpoint: POST /users/v1/register
+# Vulnerable Sink: Blindly injecting JSON payload into the database model
+new_user = User(**request.json) 
+new_user.save()`,
+        payload: `{"username": "attacker", "password": "password", "admin": true}`,
+        result: 'The attacker forces the backend to overwrite restricted properties, granting themselves administrative privileges upon account creation.'
+      },
+      {
+        name: 'Excessive Data Exposure',
+        whatIsIt: 'APIs often rely on the client side to filter data before displaying it to the user. Excessive Data Exposure happens when the API sends back sensitive information in the JSON response that should never leave the server.',
+        file: 'api_views/users.py',
+        line: 'debug_endpoint',
+        codeSnippet: `# Target Endpoint: GET /users/v1/_debug
+# Vulnerable Sink: Serializing and returning the entire database record
+users = get_all_users()
+return jsonify(users) # Exposes passwords, internal IDs, and roles`,
+        payload: 'GET /users/v1/_debug',
+        result: 'The API responds with the complete user model for everyone on the platform, leaking sensitive PII and password hashes.'
+      },
+      {
+        name: 'Regular Expression Denial of Service (ReDoS)',
+        whatIsIt: 'ReDoS affects unsafe regular expressions used for input validation. If an attacker submits a highly complex "evil regex" string, it forces the regex engine into catastrophic backtracking, consuming all CPU resources.',
+        file: 'api_views/users.py',
+        line: '144',
+        codeSnippet: `# Target Endpoint: POST /users/v1/login or Register
+# Vulnerable Sink: Checking password/email complexity with inefficient regex
+if re.match(r"^(a+)+$", request.json.get("password")):`,
+        payload: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaX',
+        result: 'The server hangs while trying to evaluate the string, causing the API to crash and leading to a Denial of Service (DoS) for all users.'
+      },
+      {
+        name: 'JWT Authentication Bypass (Weak Key)',
+        whatIsIt: 'JSON Web Tokens (JWTs) rely on a secret signing key to ensure they haven\'t been tampered with. If the API uses a weak or hardcoded secret key, attackers can forge their own valid tokens.',
+        file: 'config.py',
+        line: '13',
+        codeSnippet: `# Vulnerable Sink: Hardcoded/Weak Secret used for signing JWTs
+app.config['SECRET_KEY'] = 'secret'`,
+        payload: 'Brute-force offline, then sign new token with {"admin": true}',
+        result: 'Complete authentication bypass, allowing attackers to impersonate any user or admin on the system.'
+      },
+      {
+        name: 'Unauthorized Password Change',
+        whatIsIt: 'The endpoint intended for users to update their passwords fails to require authorization or proof of the old password before committing the change.',
+        file: 'api_views/users.py',
+        line: 'PUT /users/v1/{username}/password',
+        codeSnippet: `# Target Endpoint: PUT /users/v1/{username}/password
+user.password = request.json.get("new_password")
+db.session.commit() # Missing: check old password`,
+        payload: 'PUT request targeting another user\'s profile',
+        result: 'Attackers can unilaterally lock legitimate users out of their accounts and take them over.'
+      },
+      {
+        name: 'Lack of Resources & Rate Limiting',
+        whatIsIt: 'The API lacks throttling or rate-limiting restrictions (such as restricting an IP to 5 requests per minute).',
+        file: 'Global APIs',
+        line: 'N/A',
+        codeSnippet: `# Missing API Gateway or Flask-Limiter config
+# app.run() directly exposed`,
+        payload: 'Automated script sending 10,000 requests per second',
+        result: 'Attackers can perform unlimited credential stuffing or brute-force attacks against the login endpoint without being blocked.'
+      },
+      {
+        name: 'User and Password Enumeration',
+        whatIsIt: 'The API\'s error handling is overly verbose. By returning distinct error messages or HTTP status codes for different failure states, it allows attackers to map out valid accounts.',
+        file: 'api_views/users.py',
+        line: 'POST /users/v1/login',
+        codeSnippet: `if not user:
+    return "User does not exist", 404
+if user.password != password:
+    return "Invalid password", 401`,
+        payload: 'Iterate through common usernames',
+        result: 'Allows an attacker to build a massive list of valid usernames, making targeted brute-force attacks significantly more effective.'
       }
     ],
     performance: {
       fixora: {
         score: 5,
-        total: 10,
+        total: 9,
         falsePositives: 0,
-        description: 'Elite detection. Wrapper Hunter analyzed the Flask routing and correctly identified 5 out of the 10 core OWASP API vulnerabilities, including extremely complex logic flaws like IDOR and Mass Assignment.'
+        duplicates: 0,
+        description: 'Elite detection. Found 5 of the 9 core API logic flaws: SQL Injection, BOLA/IDOR, Mass Assignment, ReDoS, and Weak JWT Keys. Missed architectural and rate-limiting issues (which require DAST).'
       },
       vanillaSemgrep: {
-        score: 0,
-        total: 10,
+        score: 1,
+        total: 9,
         falsePositives: 0,
-        description: 'Failed completely on business logic. Vanilla Semgrep only found generic issues like Docker misconfigurations and XSS. It completely missed the core API logic flaws like IDOR, SQL Injection, Mass Assignment, and Plaintext Password comparisons.'
+        duplicates: 2,
+        description: 'Failed completely on business logic. Found only 1 of the 9 vulnerabilities (Hardcoded JWT Key). Produced 6 total findings, most of which were duplicate format string issues or Docker misconfigs irrelevant to the core API flaws.'
       },
       semgrepAi: {
         score: 0,
-        total: 10,
+        total: 9,
         falsePositives: 0,
+        duplicates: 0,
         description: 'Awaiting Semgrep AI results...'
       }
     },
-    rawLogs: `=== VANILLA SEMGREP RESULTS ===
-- avoid_hardcoded_config_SECRET_KEY (config.py:13)
-- detected-jwt-token (openapi3.yml:193)
-- run-shell-injection (.github/workflows)
-- missing-user (Dockerfile:17)
-- missing-user-entrypoint (Dockerfile:16)
-- directly-returned-format-string (api_views/users.py:14, 16)
+    missedLogs: `=== FIXORA - FALSE POSITIVES ===
+- None!
 
-=== FIXORA AI WRAPPER RESULTS ===
-- IDOR / Broken Access Control via book_title (api_views/books.py:51, 62, 63)
-- Plaintext Password Comparison (api_views/users.py:92)
-- ReDoS / Input Validation Failure via email (api_views/users.py:144, 163)
-- Hardcoded Secret (config.py:13)
-- Missing User Entrypoint (Dockerfile:16, 17)
-- SQL Injection via username (models/user_model.py:73)
-- Detected Jwt Token (openapi3.yml:193)`
+=== FIXORA - MISSED VULNERABILITIES (4) ===
+1. Excessive Data Exposure (GET /users/v1/_debug)
+2. Unauthorized Password Change (PUT /users/v1/{username}/password)
+3. Lack of Resources & Rate Limiting
+4. User and Password Enumeration
+
+=== VANILLA SEMGREP - FALSE POSITIVES (0) ===
+- None
+
+=== VANILLA SEMGREP - MISSED VULNERABILITIES (8) ===
+1. SQL Injection (SQLi)
+2. Broken Object Level Authorization (BOLA / IDOR)
+3. Mass Assignment
+4. Excessive Data Exposure
+5. Regular Expression Denial of Service (ReDoS)
+6. Unauthorized Password Change
+7. Lack of Resources & Rate Limiting
+8. User and Password Enumeration`
   },
   test_repo: {
     title: 'Custom Test Repository',
@@ -283,18 +354,21 @@ cursor.execute(f"SELECT * FROM users WHERE username = '{user_input}'")`,
         score: 1,
         total: 1,
         falsePositives: 0,
+        duplicates: 0,
         description: 'Caught instantly. The engine perfectly mapped the taint flow from the user input parameter directly to the database execution sink.'
       },
       vanillaSemgrep: {
         score: 1,
         total: 1,
         falsePositives: 0,
+        duplicates: 0,
         description: 'Successfully detected. This is a standard, well-documented vulnerability pattern that generic SAST tools handle easily.'
       },
       semgrepAi: {
         score: 1,
         total: 1,
         falsePositives: 0,
+        duplicates: 0,
         description: 'Successfully detected and verified.'
       }
     },
@@ -429,8 +503,8 @@ const Results = () => {
                     </CarouselItem>
                   ))}
                 </CarouselContent>
-                <CarouselPrevious className="-left-6" />
-                <CarouselNext className="-right-6" />
+                <CarouselPrevious className="-left-10" />
+                <CarouselNext className="-right-10" />
               </Carousel>
             </div>
 
@@ -471,6 +545,12 @@ const Results = () => {
                       {data.performance.fixora.falsePositives}
                     </Badge>
                   </div>
+                  <div className="mt-2 flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Duplicates</span>
+                    <Badge variant={data.performance.fixora.duplicates === 0 ? "outline" : "secondary"} className="font-mono bg-zinc-800 text-zinc-100 border-zinc-700">
+                      {data.performance.fixora.duplicates}
+                    </Badge>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -502,6 +582,12 @@ const Results = () => {
                       {data.performance.vanillaSemgrep.falsePositives}
                     </Badge>
                   </div>
+                  <div className="mt-2 flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Duplicates</span>
+                    <Badge variant={data.performance.vanillaSemgrep.duplicates === 0 ? "outline" : "secondary"} className="font-mono bg-zinc-800 text-zinc-100 border-zinc-700">
+                      {data.performance.vanillaSemgrep.duplicates}
+                    </Badge>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -531,6 +617,12 @@ const Results = () => {
                     <span className="text-muted-foreground">False Positives</span>
                     <Badge variant={data.performance.semgrepAi.falsePositives === 0 ? "outline" : "destructive"} className="font-mono">
                       {data.performance.semgrepAi.falsePositives}
+                    </Badge>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Duplicates</span>
+                    <Badge variant={data.performance.semgrepAi.duplicates === 0 ? "outline" : "secondary"} className="font-mono bg-zinc-800 text-zinc-100 border-zinc-700">
+                      {data.performance.semgrepAi.duplicates}
                     </Badge>
                   </div>
                 </CardContent>
