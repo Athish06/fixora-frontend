@@ -47,7 +47,7 @@ const DashboardLayout = ({ children }) => {
     {
       title: '',
       items: [
-        { name: 'Debug History', path: '/ai-knowledge', icon: Brain },
+        { name: 'History', path: '/ai-knowledge', icon: Brain },
       ]
     }
   ];
