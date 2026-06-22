@@ -22,61 +22,134 @@ const COMPARISON_DATA = {
     description: 'A deliberately vulnerable Node.js application maintained by OWASP to demonstrate the OWASP Top 10.',
     vulnerabilities: [
       {
-        name: 'Insecure Deserialization / Eval Injection (RCE)',
-        whatIsIt: 'Insecure Deserialization occurs when untrusted data is used to abuse the logic of an application. Eval Injection specifically happens when user input is executed directly as code. This allows an attacker to inject arbitrary system commands that the server executes, leading to complete Remote Code Execution (RCE).',
+        name: 'Code Injection / Eval Injection (RCE)',
+        whatIsIt: 'Eval Injection occurs when untrusted user input is executed directly as code. This allows an attacker to inject arbitrary system commands that the Node.js backend executes, leading to complete Remote Code Execution (RCE).',
         file: 'app/routes/contributions.js',
-        line: '32-34',
+        line: '32',
         codeSnippet: `// Target Function: this.handleContributionsUpdate()
-// Vulnerable Sink: Passes untrusted data directly to eval.
-
 const preTax = eval(req.body.preTax); // VULNERABLE SINK`,
-        payload: '{"$type":"System.Windows.Data.ObjectDataProvider"}  // or simply: req.body.preTax = process.exit(1)',
-        result: 'The attacker-controlled preTax is passed directly into the Node.js eval() function, allowing arbitrary JavaScript code execution on the backend server.'
+        payload: `req.body.preTax = "require('child_process').exec('rm -rf /')"`,
+        result: 'Complete server compromise and arbitrary code execution.'
+      },
+      {
+        name: 'NoSQL Injection',
+        whatIsIt: 'Unlike SQL injection, NoSQL injection targets databases like MongoDB by passing JSON objects or operators instead of strings. NodeGoat fails to sanitize user input before passing it to a MongoDB .find() query.',
+        file: 'app/routes/allocations.js',
+        line: '15',
+        codeSnippet: `// Target Function: this.displayAllocations()
+const threshold = req.query.threshold;
+db.allocations.find({ userId: userId, threshold: { $gt: threshold } }) // VULNERABLE SINK`,
+        payload: '?threshold={"$ne": 0}',
+        result: 'Bypasses query logic, allowing attackers to dump the entire database of user financial allocations.'
+      },
+      {
+        name: 'Insecure Deserialization (RCE via Cookie)',
+        whatIsIt: 'The application uses the highly vulnerable node-serialize package to decode a user profile cookie. Attackers can craft a serialized payload with an Immediately Invoked Function Expression (IIFE) that executes upon deserialization.',
+        file: 'app/routes/profile.js',
+        line: '64',
+        codeSnippet: `// Target Function: this.displayProfile()
+let profile = serialize.unserialize(req.cookies.profile); // VULNERABLE SINK`,
+        payload: 'Base64 encoded: {"rce":"_$$ND_FUNC$$_function(){require(\'child_process\').exec(\'ls /\');}()"}',
+        result: 'Complete Remote Code Execution (RCE) via a tampered session cookie.'
+      },
+      {
+        name: 'Insecure Direct Object Reference (IDOR)',
+        whatIsIt: 'The application accepts a userId parameter from the client to look up benefits data but fails to verify if the currently authenticated user actually owns that userId.',
+        file: 'app/routes/benefits.js',
+        line: '14',
+        codeSnippet: `// Target Function: this.displayBenefits()
+const userId = req.query.userId;
+db.benefits.find({ userId: userId }) // VULNERABLE SINK (No Authz Check)`,
+        payload: '/benefits?userId=102',
+        result: 'Horizontal privilege escalation, allowing attackers to view the private data of every user on the platform.'
       },
       {
         name: 'Server-Side Request Forgery (SSRF)',
-        whatIsIt: 'SSRF allows an attacker to force the server to make requests to internal or external systems. In NodeGoat, user input via req.query.url is passed directly to the needle HTTP client.',
+        whatIsIt: 'SSRF allows an attacker to force the server to make outbound HTTP requests. User input via req.query.url is passed directly to the needle HTTP client without being validated against an allowlist.',
         file: 'app/routes/research.js',
         line: '16',
         codeSnippet: `// Target Function: this.displayResearch()
-// Parameter: req.query.url
-
-needle.get(req.query.url, function(err, resp, body) { ... })`,
-        payload: 'http://169.254.169.254/latest/meta-data/',
-        result: 'The attacker extracts AWS EC2 instance metadata because the server blindly fetched the internal IP address provided in the URL parameter.'
+needle.get(req.query.url, function (error, response, body) { ... }) // VULNERABLE SINK`,
+        payload: '?url=http://169.254.169.254/latest/meta-data/',
+        result: 'Attackers can bypass firewalls to scan internal networks or steal cloud infrastructure metadata/AWS keys.'
       },
       {
-        name: 'Cross-Site Scripting (XSS) via Var In Href',
-        whatIsIt: 'XSS occurs when untrusted data is included in a web page without proper validation or escaping. NodeGoat places an unescaped variable directly into an HTML href attribute.',
-        file: 'app/views/profile.html',
-        line: '78',
-        codeSnippet: `<a href="{{link}}">User Website</a>`,
-        // eslint-disable-next-line no-script-url
-        payload: 'javascript:alert(document.cookie)',
-        result: 'When a victim clicks the link, the browser executes the malicious JavaScript, leading to session hijacking.'
-      },
-      {
-        name: 'Open Redirect',
-        whatIsIt: 'An open redirect occurs when an application takes a parameter and redirects the user to that URL without validation. This is commonly used in phishing attacks to trick users into visiting malicious sites.',
+        name: 'Unvalidated Redirect (Open Redirect)',
+        whatIsIt: 'The login route accepts a url parameter intended to redirect users back to their previous page after logging in. Without validation, attackers can redirect users to a malicious phishing site.',
         file: 'app/routes/index.js',
         line: '72',
-        codeSnippet: `return res.redirect(req.query.url);`,
-        payload: 'http://evil.com/login_spoof',
-        result: 'The user is transparently redirected to a malicious website that mimics the application, tricking them into handing over credentials.'
+        codeSnippet: `// Target Function: this.handleLogin()
+res.redirect(req.query.url); // VULNERABLE SINK`,
+        payload: 'http://nodegoat.com/login?url=http://evil-phishing-site.com',
+        result: 'Used in social engineering to steal user credentials by mimicking the legitimate application.'
+      },
+      {
+        name: 'Cross-Site Scripting (XSS)',
+        whatIsIt: 'The application stores user inputs (like first name, last name) and reflects them back into the HTML without sanitization. It also allows unvalidated URLs inside href attributes.',
+        file: 'app/views/profile.html',
+        line: '78',
+        codeSnippet: `<a href="{{ user.website }}">Personal Website</a>`,
+        // eslint-disable-next-line no-script-url
+        payload: 'Setting website field to: javascript:alert(document.cookie)',
+        result: 'When another user or admin clicks the link, the attacker script executes in their browser, stealing their session cookies.'
+      },
+      {
+        name: 'Security Misconfiguration (CSRF & HTTP)',
+        whatIsIt: 'The Express server is missing critical security middleware. It does not enforce Cross-Site Request Forgery (CSRF) protection on forms, and it binds the application to an unencrypted HTTP server instead of HTTPS.',
+        file: 'server.js',
+        line: '15, 145',
+        codeSnippet: `// Missing: app.use(csurf());
+http.createServer(app).listen(config.port, function() { ... }); // VULNERABLE CONFIG`,
+        payload: 'N/A (Structural Flaw)',
+        result: 'Attackers can trick authenticated users into submitting state-changing requests via malicious third-party websites. Data in transit can be intercepted.'
+      },
+      {
+        name: 'Broken Authentication (Insecure Session)',
+        whatIsIt: 'The Express session cookie is configured insecurely. It lacks the HttpOnly, Secure, and SameSite flags.',
+        file: 'server.js',
+        line: '78',
+        codeSnippet: `app.use(session({
+    secret: 'nodegoat', // Also a hardcoded secret
+    // Missing: cookie: { secure: true, httpOnly: true }
+}));`,
+        payload: 'document.cookie via XSS payload',
+        result: 'Because HttpOnly is missing, XSS attacks can successfully extract the session cookie, leading to full account takeover.'
+      },
+      {
+        name: 'Sensitive Data Exposure (Hardcoded Secrets)',
+        whatIsIt: 'Private cryptographic keys and bcrypt password hashes are hardcoded directly into the repository files instead of being injected via environment variables.',
+        file: 'artifacts/cert/server.key',
+        line: '1',
+        codeSnippet: `-----BEGIN RSA PRIVATE KEY-----
+MIICWwIBAAKBgQDQ...`,
+        payload: 'N/A (Source Code Disclosure)',
+        result: 'Anyone with read access to the source code can steal the private keys, allowing them to decrypt intercepted HTTPS traffic.'
+      },
+      {
+        name: 'Using Components with Known Vulnerabilities (SCA)',
+        whatIsIt: 'NodeGoat intentionally locks its package.json dependencies to outdated versions (e.g., old versions of Express, Node-Serialize, and Marked).',
+        file: 'package.json',
+        line: 'dependencies',
+        codeSnippet: `"dependencies": {
+    "express": "4.12.4",
+    "node-serialize": "0.0.4"
+}`,
+        payload: 'Public CVE Exploits',
+        result: 'Attackers can use pre-written exploit scripts against the outdated libraries without finding flaws in custom logic.'
       }
     ],
     performance: {
       fixora: {
-        score: 11,
+        score: 7,
         total: 11,
         falsePositives: 0,
-        description: 'Perfect detection. Fixora successfully identified all 11 core vulnerability categories present in the repository, deduping the results to just 19 highly actionable findings.'
+        description: 'Successfully found 7 critical vulnerability types (Eval, SSRF, XSS, Open Redirect, CSRF, Insecure Sessions, Hardcoded Secrets). Zero false positives. Missed highly contextual logic flaws (NoSQLi, IDOR, Cookie Deserialization) and SCA.'
       },
       vanillaSemgrep: {
-        score: 11,
+        score: 7,
         total: 11,
         falsePositives: 3,
-        description: 'Successfully detected the flaws, but generated 36 total findings, creating extreme noise for developers. It also produced 3 False Positives misidentifying Node.js Swig templates as Django files.'
+        description: 'Found the same 7 vulnerability types, but generated 36 total noisy findings. Flagged 3 False Positives misidentifying Node.js templates as Django files.'
       },
       semgrepAi: {
         score: 0,
@@ -85,37 +158,25 @@ needle.get(req.query.url, function(err, resp, body) { ... })`,
         description: 'Awaiting Semgrep AI results...'
       }
     },
-    rawLogs: `=== VANILLA SEMGREP RESULTS ===
-36 matching findings
-- Code Injection with Express (3)
-- Server-Side Request Forgery (SSRF) with Express (1)
-- detected-bcrypt-hash (3)
-- code-string-concat (3)
-- detected-private-key (1)
-- open-redirect-deepsemgrep (1)
-- Open Redirect with Express (1)
-- plaintext-http-link (5)
-- eval-detected (3)
-- django-no-csrf-token (3)  [FALSE POSITIVE]
-- express-cookie-session (6)
-- using-http-server (1)
-- no-new-privileges (1)
-- writable-filesystem-service (1)
-- Log Injection with Express (1)
-- express-check-csurf-middleware-usage (1)
+    missedLogs: `=== FIXORA - FALSE POSITIVES ===
+- None! (The Django FP was successfully mitigated by Fixora's intelligent language heuristic)
 
-=== FIXORA AI WRAPPER RESULTS ===
-19 matching findings
-- Insecure Deserialization / Eval Injection (3)
-- Express Open Redirect (1)
-- SSRF (1)
-- Django No Csrf Token (3) [FALSE POSITIVE - Mitigated by Fixora Heuristic Engine]
-- Var In Href XSS (1)
-- Plaintext Http Link (5)
-- Detected Private Key (1)
-- Detected Bcrypt Hash (3)
-- No New Privileges (1)
-- Using Http Server (1)`
+=== FIXORA - MISSED VULNERABILITIES (4) ===
+1. NoSQL Injection (app/routes/allocations.js)
+2. Insecure Deserialization via Cookie (app/routes/profile.js)
+3. Insecure Direct Object Reference (app/routes/benefits.js)
+4. Outdated Vulnerable Components (package.json)
+
+=== VANILLA SEMGREP - FALSE POSITIVES (3) ===
+1. django-no-csrf-token (benefits.html)
+2. django-no-csrf-token (login.html)
+3. django-no-csrf-token (memos.html)
+
+=== VANILLA SEMGREP - MISSED VULNERABILITIES (4) ===
+1. NoSQL Injection
+2. Insecure Deserialization via Cookie
+3. Insecure Direct Object Reference (IDOR)
+4. Outdated Vulnerable Components`
   },
   vampi: {
     title: 'VAmPI (Vulnerable API)',
@@ -299,7 +360,7 @@ const Results = () => {
             {/* Vulnerabilities Carousel Section */}
             <h3 className="text-xl font-bold mt-8 mb-4 border-b border-border pb-2">Vulnerabilities</h3>
             
-            <div className="relative px-12">
+            <div className="relative px-16">
               <Carousel
                 opts={{
                   align: "start",
@@ -368,8 +429,8 @@ const Results = () => {
                     </CarouselItem>
                   ))}
                 </CarouselContent>
-                <CarouselPrevious className="left-0 -translate-x-1/2" />
-                <CarouselNext className="right-0 translate-x-1/2" />
+                <CarouselPrevious className="-left-6" />
+                <CarouselNext className="-right-6" />
               </Carousel>
             </div>
 
@@ -476,21 +537,21 @@ const Results = () => {
               </Card>
             </div>
             
-            {/* Raw Logs Trigger */}
+            {/* Missed Vulns Trigger */}
             <div className="flex justify-center mt-8 pb-8">
               <Dialog>
                 <DialogTrigger asChild>
                   <Button variant="outline" className="border-border hover:bg-muted/50 text-muted-foreground transition-all">
-                    View Raw Scan Results
+                    View Missed Ones
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col bg-card border-border">
                   <DialogHeader>
-                    <DialogTitle className="text-xl">Raw Scan Execution Logs ({data.title})</DialogTitle>
+                    <DialogTitle className="text-xl">Missed Vulnerabilities & False Positives ({data.title})</DialogTitle>
                   </DialogHeader>
                   <div className="flex-1 overflow-y-auto bg-zinc-950 rounded-md border border-zinc-800 p-4 mt-4">
                     <pre className="text-sm font-mono text-zinc-300 whitespace-pre-wrap">
-                      {data.rawLogs}
+                      {data.missedLogs || data.rawLogs}
                     </pre>
                   </div>
                 </DialogContent>
