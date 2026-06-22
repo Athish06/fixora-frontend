@@ -4,10 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home,
   FolderGit2,
-  Shield,
   Brain,
-  Activity,
-  Settings as SettingsIcon,
   LogOut,
   Menu,
   X,
