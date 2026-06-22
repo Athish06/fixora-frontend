@@ -9,7 +9,8 @@ import {
   Menu,
   X,
   PanelLeftClose,
-  ChevronRight
+  ChevronRight,
+  BarChart2
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { Button } from '../components/ui/button';
@@ -33,7 +34,7 @@ const DashboardLayout = ({ children }) => {
   // Navigation organized by sections
   const navigationSections = [
     {
-      title: 'Overview',
+      title: '',
       items: [
         { name: 'Dashboard', path: '/dashboard', icon: Home },
       ]
@@ -48,6 +49,12 @@ const DashboardLayout = ({ children }) => {
       title: '',
       items: [
         { name: 'History', path: '/ai-knowledge', icon: Brain },
+      ]
+    },
+    {
+      title: '',
+      items: [
+        { name: 'Benchmark Results', path: '/results', icon: BarChart2 },
       ]
     }
   ];
