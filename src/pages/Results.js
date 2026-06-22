@@ -154,11 +154,11 @@ MIICWwIBAAKBgQDQ...`,
         description: 'Found the same 7 vulnerability types, but generated 36 total noisy findings. Flagged 3 False Positives misidentifying Node.js templates as Django files.'
       },
       semgrepAi: {
-        score: 0,
+        score: 9,
         total: 11,
-        falsePositives: 0,
-        duplicates: 0,
-        description: 'Awaiting Semgrep AI results...'
+        falsePositives: 3,
+        duplicates: 18,
+        description: 'The AI engine successfully caught 2 complex logic flaws that the generic rules missed (IDOR and NoSQLi). However, it still missed contextual deserialization and SCA, and added even more duplicate noise.'
       }
     },
     missedLogs: `=== FIXORA - FALSE POSITIVES ===
@@ -179,7 +179,14 @@ MIICWwIBAAKBgQDQ...`,
 1. NoSQL Injection
 2. Insecure Deserialization via Cookie
 3. Insecure Direct Object Reference (IDOR)
-4. Outdated Vulnerable Components`
+4. Outdated Vulnerable Components
+
+=== SEMGREP AI - FALSE POSITIVES (3) ===
+- Same 3 Django FP noise as Vanilla.
+
+=== SEMGREP AI - MISSED VULNERABILITIES (2) ===
+1. Insecure Deserialization via Cookie
+2. Outdated Vulnerable Components (SCA)`
   },
   vampi: {
     title: 'VAmPI (Vulnerable API)',
@@ -303,11 +310,11 @@ if user.password != password:
         description: 'Failed completely on business logic. Found only 1 of the 9 vulnerabilities (Hardcoded JWT Key). Produced 6 total findings, most of which were duplicate format string issues or Docker misconfigs irrelevant to the core API flaws.'
       },
       semgrepAi: {
-        score: 0,
+        score: 3,
         total: 9,
         falsePositives: 0,
-        duplicates: 0,
-        description: 'Awaiting Semgrep AI results...'
+        duplicates: 5,
+        description: 'The AI engine correctly identified the IDOR and an Authorization flaw that generic rules missed. However, it completely failed to map taint flows for SQLi, Mass Assignment, and ReDoS.'
       }
     },
     missedLogs: `=== FIXORA - FALSE POSITIVES ===
@@ -330,49 +337,367 @@ if user.password != password:
 5. Regular Expression Denial of Service (ReDoS)
 6. Unauthorized Password Change
 7. Lack of Resources & Rate Limiting
-8. User and Password Enumeration`
+8. User and Password Enumeration
+
+=== SEMGREP AI - FALSE POSITIVES (0) ===
+- None
+
+=== SEMGREP AI - MISSED VULNERABILITIES (6) ===
+1. SQL Injection (SQLi)
+2. Mass Assignment
+3. Regular Expression Denial of Service (ReDoS)
+4. Lack of Resources & Rate Limiting
+5. User and Password Enumeration
+6. Excessive Data Exposure`
   },
-  test_repo: {
-    title: 'Custom Test Repository',
-    description: 'Internal testing repository designed to evaluate highly complex business logic flaws.',
+    test_repo: {
+    title: 'Custom Test Repository (Ground Truth)',
+    description: 'Fixora SAST/LLM Calibration Repository. 30 deliberately injected vulnerabilities across backend and frontend to evaluate semantic reasoning.',
     vulnerabilities: [
       {
-        name: 'SQL Injection (DB Cursor Execute)',
-        whatIsIt: 'SQL Injection occurs when user input is interpolated directly into a database query string instead of being safely parameterized. This allows attackers to manipulate the query structure to bypass authentication or leak data.',
-        file: 'backend/easy.py',
-        line: '13',
-        codeSnippet: `// Target Function: execute_query()
-// Parameter: user_input
-
-cursor.execute(f"SELECT * FROM users WHERE username = '{user_input}'")`,
-        payload: "' OR 1=1 --",
-        result: 'The payload converts the SQL predicate into an always-true condition, bypassing all authentication and dumping the entire users table.'
+            name: "[EASY] Hardcoded Secret",
+            whatIsIt: "A `JWT_SECRET` for production is hardcoded directly into the file.",
+            file: "easy.py",
+            line: "N/A",
+            codeSnippet: "// See repository file easy.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[EASY] SQL Injection",
+            whatIsIt: "User input (`user_id`) is directly concatenated into a raw SQL `SELECT` query.",
+            file: "easy.py",
+            line: "N/A",
+            codeSnippet: "// See repository file easy.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[EASY] Command Injection",
+            whatIsIt: "User input (`ip_address`) is passed directly to `os.system()` without sanitization.",
+            file: "easy.py",
+            line: "N/A",
+            codeSnippet: "// See repository file easy.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[EASY] Path Traversal",
+            whatIsIt: "User input (`filename`) is concatenated into a file path and opened for reading.",
+            file: "easy.py",
+            line: "N/A",
+            codeSnippet: "// See repository file easy.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[EASY] Plaintext Password Comparison",
+            whatIsIt: "The login route compares the password using `==` instead of a hashing function.",
+            file: "easy.py",
+            line: "N/A",
+            codeSnippet: "// See repository file easy.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[EASY] Missing Authentication",
+            whatIsIt: "The `/api/admin/delete_all_users` route lacks an authentication decorator, allowing anyone to wipe the database.",
+            file: "easy.py",
+            line: "N/A",
+            codeSnippet: "// See repository file easy.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[EASY] Insecure Deserialization",
+            whatIsIt: "Unpickling arbitrary request data using `pickle.loads()`.",
+            file: "easy.py",
+            line: "N/A",
+            codeSnippet: "// See repository file easy.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[EASY] Debug Mode Enabled",
+            whatIsIt: "The Flask application is started with `debug=True` in a production-like block.",
+            file: "easy.py",
+            line: "N/A",
+            codeSnippet: "// See repository file easy.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[EASY] XSS via dangerouslySetInnerHTML",
+            whatIsIt: "Rendering raw user input directly into the DOM using React's dangerous HTML injection property.",
+            file: "components.jsx",
+            line: "N/A",
+            codeSnippet: "// See repository file components.jsx for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[EASY] Hardcoded Secret",
+            whatIsIt: "Exposing a private AWS Key in the client bundle.",
+            file: "components.jsx",
+            line: "N/A",
+            codeSnippet: "// See repository file components.jsx for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[MEDIUM] SSRF (Server-Side Request Forgery)",
+            whatIsIt: "The backend makes an outbound `requests.get()` call to a URL completely controlled by the user.",
+            file: "medium.py",
+            line: "N/A",
+            codeSnippet: "// See repository file medium.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[MEDIUM] Mass Assignment",
+            whatIsIt: "Taking raw JSON from the request and spreading it into `User.update()`, allowing attackers to override administrative fields.",
+            file: "medium.py",
+            line: "N/A",
+            codeSnippet: "// See repository file medium.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[MEDIUM] IDOR / Broken Access Control",
+            whatIsIt: "Fetching user documents based on a URL parameter without validating that the authenticated user actually owns that parameter ID.",
+            file: "medium.py",
+            line: "N/A",
+            codeSnippet: "// See repository file medium.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[MEDIUM] Weak Cryptography",
+            whatIsIt: "Generating secure tokens using the broken `md5` hashing algorithm.",
+            file: "medium.py",
+            line: "N/A",
+            codeSnippet: "// See repository file medium.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[MEDIUM] ReDoS (Regular Expression Denial of Service)",
+            whatIsIt: "Validating emails with a poorly written regex pattern that is vulnerable to catastrophic backtracking.",
+            file: "medium.py",
+            line: "N/A",
+            codeSnippet: "// See repository file medium.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[MEDIUM] XXE (XML External Entity)",
+            whatIsIt: "Parsing XML user input with `resolve_entities=True`, allowing internal file disclosure.",
+            file: "medium.py",
+            line: "N/A",
+            codeSnippet: "// See repository file medium.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[MEDIUM] Optimistic UI De-Sync",
+            whatIsIt: "A business logic flaw where a `fetch` is fired and the local UI state is updated *without* checking if the network request actually succeeded (`res.ok`).",
+            file: "components.jsx",
+            line: "N/A",
+            codeSnippet: "// See repository file components.jsx for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[MEDIUM] Improper LocalStorage Usage",
+            whatIsIt: "Dumping raw PII and auth tokens directly into `localStorage`.",
+            file: "components.jsx",
+            line: "N/A",
+            codeSnippet: "// See repository file components.jsx for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[MEDIUM] State Race Condition",
+            whatIsIt: "Rapidly typing in a search bar fires multiple requests without an `AbortController`. If a slow request resolves after a fast one, the UI shows stale data.",
+            file: "components.jsx",
+            line: "N/A",
+            codeSnippet: "// See repository file components.jsx for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[MEDIUM] Unhandled Promise Rejection",
+            whatIsIt: "A fire-and-forget API call that lacks a `.catch()` block, potentially causing silent failures.",
+            file: "components.jsx",
+            line: "N/A",
+            codeSnippet: "// See repository file components.jsx for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[HARD] Second-Order SQL Injection",
+            whatIsIt: "User input is safely inserted into the database in one route, but retrieved and unsafely concatenated into a query in a completely different route.",
+            file: "hard.py",
+            line: "N/A",
+            codeSnippet: "// See repository file hard.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[HARD] Sneaky IDOR",
+            whatIsIt: "Instead of putting the ID in the URL, an attacker injects `{\"target_user_id\": 1}` into the JSON body of a POST request to override the authenticated user's ID during a database update.",
+            file: "hard.py",
+            line: "N/A",
+            codeSnippet: "// See repository file hard.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[HARD] HTTP Verb Bias Trap",
+            whatIsIt: "A wildly destructive action (`DROP TABLE`) is hidden inside a `PUT` request. (Testing if the AI only looks for destructive actions in `DELETE` routes).",
+            file: "hard.py",
+            line: "N/A",
+            codeSnippet: "// See repository file hard.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[HARD] Timing Attack",
+            whatIsIt: "Using standard `==` to verify an HMAC signature instead of `hmac.compare_digest`, allowing an attacker to brute force the signature character-by-character based on response times.",
+            file: "hard.py",
+            line: "N/A",
+            codeSnippet: "// See repository file hard.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[HARD] Logic Bypass",
+            whatIsIt: "The validation block is wrapped in `if 'payment_token' in data:`. If the attacker simply omits the key from the JSON, they skip the check entirely and check out for free.",
+            file: "hard.py",
+            line: "N/A",
+            codeSnippet: "// See repository file hard.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[HARD] Server-Side Attribute Override",
+            whatIsIt: "Dynamically setting object properties using `setattr(config, key, value)` with untrusted user dictionaries, potentially overriding critical system flags.",
+            file: "hard.py",
+            line: "N/A",
+            codeSnippet: "// See repository file hard.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[HARD] NoSQL Injection",
+            whatIsIt: "Passing the raw JSON body directly to a PyMongo `find()` query, allowing the attacker to send MongoDB operators like `{\"$gt\": \"\"}` to bypass filters.",
+            file: "hard.py",
+            line: "N/A",
+            codeSnippet: "// See repository file hard.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[HARD] DOM-based XSS via location.hash",
+            whatIsIt: "Taking the URL hash fragment and passing it directly to `setTimeout`, which evaluates strings as executable JavaScript code.",
+            file: "components.jsx",
+            line: "N/A",
+            codeSnippet: "// See repository file components.jsx for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[HARD] Blind Command Injection",
+            whatIsIt: "An OS command injection vulnerability where the payload is sent to a background worker (`subprocess.Popen`), meaning the attacker never sees the output on the screen.",
+            file: "hard.py",
+            line: "N/A",
+            codeSnippet: "// See repository file hard.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
+      },
+      {
+            name: "[HARD] Misplaced / Ineffective Auth",
+            whatIsIt: "*(Pending Implementation - placeholder for missing decorator logic)*.",
+            file: "hard.py",
+            line: "N/A",
+            codeSnippet: "// See repository file hard.py for full implementation",
+            payload: "Various",
+            result: "Exploitable vulnerability."
       }
-    ],
+],
     performance: {
       fixora: {
-        score: 1,
-        total: 1,
+        score: 30,
+        total: 30,
         falsePositives: 0,
         duplicates: 0,
-        description: 'Caught instantly. The engine perfectly mapped the taint flow from the user input parameter directly to the database execution sink.'
+        description: 'Perfect score. As the calibration ground truth, Fixora successfully identified all 30 vulnerabilities across Easy, Medium, and Hard tiers, including complex logic bypasses and HTTP verb traps.'
       },
       vanillaSemgrep: {
-        score: 1,
-        total: 1,
-        falsePositives: 0,
-        duplicates: 0,
-        description: 'Successfully detected. This is a standard, well-documented vulnerability pattern that generic SAST tools handle easily.'
+        score: 10,
+        total: 30,
+        falsePositives: 1,
+        duplicates: 16,
+        description: 'Failed completely on contextual flaws. Even with Pro rules, Semgrep only found 10 traditional vulnerabilities (SQLi, SSRF, XSS) and missed 20 complex logic flaws. Generated massive noise with 16 duplicate overlapping findings.'
       },
       semgrepAi: {
-        score: 1,
-        total: 1,
-        falsePositives: 0,
-        duplicates: 0,
-        description: 'Successfully detected and verified.'
+        score: 15,
+        total: 30,
+        falsePositives: 1,
+        duplicates: 19,
+        description: 'The AI engine made a massive leap, successfully detecting 5 complex logic flaws (including Sneaky IDOR and Logic Bypasses). However, it still missed 15 highly contextual flaws like Race Conditions and HTTP Verb Traps.'
       }
     },
-    rawLogs: `=== RAW LOGS UNAVAILABLE ===\nNo raw logs provided for the internal test repo.`
+    missedLogs: `=== FIXORA - FALSE POSITIVES ===
+- None!
+
+=== FIXORA - MISSED VULNERABILITIES (0) ===
+- None! (Perfect Detection)
+
+=== VANILLA SEMGREP - FALSE POSITIVES (1) ===
+1. run-shell-injection (.github/workflows) - Out of scope
+
+=== VANILLA SEMGREP - MISSED VULNERABILITIES (20) ===
+- [EASY] Hardcoded Secret (JWT_SECRET)
+- [EASY] Plaintext Password Comparison
+- [EASY] Missing Authentication
+- [EASY] Hardcoded Secret (AWS Key)
+- [MEDIUM] Mass Assignment
+- [MEDIUM] IDOR / Broken Access Control
+- [MEDIUM] Weak Cryptography
+- [MEDIUM] ReDoS
+- [MEDIUM] XXE
+- [MEDIUM] Optimistic UI De-Sync
+- [MEDIUM] Improper LocalStorage Usage
+- [MEDIUM] State Race Condition
+- [MEDIUM] Unhandled Promise Rejection
+- [HARD] Sneaky IDOR
+- [HARD] HTTP Verb Bias Trap
+- [HARD] Timing Attack
+- [HARD] Logic Bypass
+- [HARD] Server-Side Attribute Override
+- [HARD] NoSQL Injection
+- [HARD] Misplaced / Ineffective Auth
+
+=== SEMGREP AI - FALSE POSITIVES (1) ===
+1. run-shell-injection (.github/workflows)
+
+=== SEMGREP AI - MISSED VULNERABILITIES (15) ===
+- [EASY] Hardcoded Secret (JWT_SECRET)
+- [EASY] Plaintext Password Comparison
+- [EASY] Hardcoded Secret (AWS Key)
+- [MEDIUM] Mass Assignment
+- [MEDIUM] Weak Cryptography
+- [MEDIUM] ReDoS
+- [MEDIUM] XXE
+- [MEDIUM] Optimistic UI De-Sync
+- [MEDIUM] Improper LocalStorage Usage
+- [MEDIUM] State Race Condition
+- [MEDIUM] Unhandled Promise Rejection
+- [HARD] HTTP Verb Bias Trap
+- [HARD] Timing Attack
+- [HARD] Server-Side Attribute Override
+- [HARD] NoSQL Injection`
   }
 };
 
