@@ -1081,7 +1081,7 @@ const RepositoryDetail = () => {
           </Card>
           <Card data-testid="patterns-stat">
             <CardContent className="pt-6">
-              <div className="text-sm text-muted-foreground mb-2">AI Debug Runs</div>
+              <div className="text-sm text-muted-foreground mb-2">Debug Runs</div>
               <div className="text-3xl font-bold text-primary">{scanDebug ? (scanDebug.vuln_wrapper_count ?? 0) : '—'}</div>
             </CardContent>
           </Card>
@@ -1104,7 +1104,7 @@ const RepositoryDetail = () => {
             </TabsTrigger>
             <TabsTrigger value="ai-patterns" data-testid="tab-patterns">
               <Bot className="w-4 h-4 mr-2" />
-              AI Debug
+              Debug
             </TabsTrigger>
           </TabsList>
 
@@ -1392,7 +1392,7 @@ const RepositoryDetail = () => {
                 <div>
                   <h2 className="text-xl font-semibold flex items-center gap-2">
                     <Bot className="w-5 h-5 text-primary" />
-                    AI Pipeline Debug
+                    Pipeline Debug
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     Full trace of Wrapper Hunter → Groq LLM → Semgrep rules (scan-wise)

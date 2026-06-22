@@ -42,18 +42,15 @@ const DashboardLayout = ({ children }) => {
       ]
     },
     {
-      title: 'Security',
+      title: '',
       items: [
         { name: 'Repositories', path: '/repositories', icon: FolderGit2 },
-        { name: 'Vulnerabilities', path: '/vulnerabilities', icon: Shield },
       ]
     },
     {
-      title: 'Intelligence',
+      title: '',
       items: [
-        { name: 'AI Knowledge', path: '/ai-knowledge', icon: Brain },
-        { name: 'Activity Log', path: '/activity', icon: Activity },
-        { name: 'Settings', path: '/settings', icon: SettingsIcon },
+        { name: 'Debug History', path: '/ai-knowledge', icon: Brain },
       ]
     }
   ];
@@ -107,7 +104,7 @@ const DashboardLayout = ({ children }) => {
           {navigationSections.map((section, sectionIndex) => (
             <div key={section.title} className={sectionIndex > 0 ? 'mt-6' : ''}>
               {/* Section Header */}
-              {!sidebarCollapsed && (
+              {!sidebarCollapsed && section.title && (
                 <div className="px-3 mb-2">
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     {section.title}

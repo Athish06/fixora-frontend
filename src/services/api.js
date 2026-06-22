@@ -59,11 +59,7 @@ export const api = {
     return response.data;
   },
   
-  // Activity
-  getActivityLog: async (limit = 50) => {
-    const response = await axios.get(`${API}/activity?limit=${limit}`, { headers: getHeaders() });
-    return response.data;
-  },
+
   
   // Dashboard
   getDashboardStats: async () => {
