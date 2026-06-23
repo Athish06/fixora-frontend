@@ -9,23 +9,23 @@ const LandingPage = () => {
   const features = [
     {
       icon: Brain,
-      title: 'Pattern Discovery',
-      description: 'Detects custom logic structures, API wrappers, and complex sinks unique to the repository.'
+      title: 'Sink Module Identification',
+      description: 'Natively detects core execution sinks across the architecture, including SQL, NoSQL, Eval, and OS commands.'
     },
     {
       icon: Shield,
-      title: 'Contextual Classification',
-      description: 'Evaluates execution paths and application state to definitively filter out false positives.'
+      title: 'LLM Wrapper Analysis',
+      description: 'Uses semantic reasoning to identify custom, repository-specific wrapper functions that abstract dangerous sinks.'
     },
     {
       icon: GitBranch,
-      title: 'Remediation',
-      description: 'Generates precise, contextual code fixes for verified vulnerabilities.'
+      title: 'Execution Path Tracing',
+      description: 'Evaluates contextual boundaries like authentication wrappers and application state to definitively filter false positives.'
     },
     {
       icon: Zap,
-      title: 'Pipeline Integration',
-      description: 'Executes automatically on commits to block flawed logic from reaching production.'
+      title: 'High-Fidelity Reporting',
+      description: 'Delivers definitively validated vulnerability reports, eliminating alert fatigue by surfacing only true, exploitable logic flaws.'
     }
   ];
 
