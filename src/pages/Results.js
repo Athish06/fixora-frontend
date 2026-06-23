@@ -143,22 +143,19 @@ MIICWwIBAAKBgQDQ...`,
         score: 7,
         total: 11,
         falsePositives: 0,
-        duplicates: 0,
         description: 'Successfully found 7 critical vulnerability types (Eval, SSRF, XSS, Open Redirect, CSRF, Insecure Sessions, Hardcoded Secrets). Zero false positives. Missed highly contextual logic flaws (NoSQLi, IDOR, Cookie Deserialization) and SCA.'
       },
       vanillaSemgrep: {
         score: 7,
         total: 11,
         falsePositives: 3,
-        duplicates: 14,
         description: 'Found the same 7 vulnerability types, but generated 36 total noisy findings. Flagged 3 False Positives misidentifying Node.js templates as Django files.'
       },
       semgrepAi: {
-        score: 9,
+        score: 1,
         total: 11,
-        falsePositives: 3,
-        duplicates: 18,
-        description: 'The AI engine successfully caught 2 complex logic flaws that the generic rules missed (IDOR and NoSQLi). However, it still missed contextual deserialization and SCA, and added even more duplicate noise.'
+        falsePositives: 0,
+        description: 'Successfully caught the IDOR in benefits.js and allocations.js, but flagged the same missing permission checks 6 times (5 duplicates). Completely failed to find 10 out of 11 core vulnerabilities.'
       }
     },
     missedLogs: `=== FIXORA - FALSE POSITIVES ===
@@ -181,12 +178,17 @@ MIICWwIBAAKBgQDQ...`,
 3. Insecure Direct Object Reference (IDOR)
 4. Outdated Vulnerable Components
 
-=== SEMGREP AI - FALSE POSITIVES (3) ===
-- Same 3 Django FP noise as Vanilla.
-
-=== SEMGREP AI - MISSED VULNERABILITIES (2) ===
-1. Insecure Deserialization via Cookie
-2. Outdated Vulnerable Components (SCA)`
+=== SEMGREP AI - MISSED VULNERABILITIES (10) ===
+1. Eval / Code Injection
+2. Server-Side Request Forgery (SSRF)
+3. Open Redirect
+4. Stored XSS
+5. Hardcoded Secrets
+6. Security Misconfiguration (CSRF)
+7. Broken Auth (Insecure Cookies)
+8. NoSQL Injection
+9. Insecure Deserialization
+10. Vulnerable Components`
   },
   vampi: {
     title: 'VAmPI (Vulnerable API)',
@@ -299,22 +301,19 @@ if user.password != password:
         score: 5,
         total: 9,
         falsePositives: 0,
-        duplicates: 0,
         description: 'Elite detection. Found 5 of the 9 core API logic flaws: SQL Injection, BOLA/IDOR, Mass Assignment, ReDoS, and Weak JWT Keys. Missed architectural and rate-limiting issues (which require DAST).'
       },
       vanillaSemgrep: {
         score: 1,
         total: 9,
         falsePositives: 0,
-        duplicates: 2,
         description: 'Failed completely on business logic. Found only 1 of the 9 vulnerabilities (Hardcoded JWT Key). Produced 6 total findings, most of which were duplicate format string issues or Docker misconfigs irrelevant to the core API flaws.'
       },
       semgrepAi: {
-        score: 3,
+        score: 1,
         total: 9,
         falsePositives: 0,
-        duplicates: 5,
-        description: 'The AI engine correctly identified the IDOR and an Authorization flaw that generic rules missed. However, it completely failed to map taint flows for SQLi, Mass Assignment, and ReDoS.'
+        description: 'Caught the BOLA/IDOR vulnerability (flagging it 5 times as Improper Auth/IDOR). Completely failed to find 8 out of 9 core API flaws (SQLi, ReDoS, JWT Weak Keys, Mass Assignment, etc).'
       }
     },
     missedLogs: `=== FIXORA - FALSE POSITIVES ===
@@ -339,20 +338,19 @@ if user.password != password:
 7. Lack of Resources & Rate Limiting
 8. User and Password Enumeration
 
-=== SEMGREP AI - FALSE POSITIVES (0) ===
-- None
-
-=== SEMGREP AI - MISSED VULNERABILITIES (6) ===
+=== SEMGREP AI - MISSED VULNERABILITIES (8) ===
 1. SQL Injection (SQLi)
 2. Mass Assignment
-3. Regular Expression Denial of Service (ReDoS)
-4. Lack of Resources & Rate Limiting
-5. User and Password Enumeration
-6. Excessive Data Exposure`
+3. Excessive Data Exposure
+4. Regular Expression Denial of Service (ReDoS)
+5. JWT Authentication Bypass (Weak Key)
+6. Unauthorized Password Change
+7. Lack of Resources & Rate Limiting
+8. User and Password Enumeration`
   },
     test_repo: {
-    title: 'Custom Test Repository (Ground Truth)',
-    description: 'Fixora SAST/LLM Calibration Repository. 30 deliberately injected vulnerabilities across backend and frontend to evaluate semantic reasoning.',
+    title: 'Custom Test Repository',
+    description: 'Fixora SAST/LLM Calibration Repository. 30 deliberately injected vulnerabilities across backend and frontend.',
     vulnerabilities: [
       {
             name: "[EASY] Hardcoded Secret",
@@ -627,35 +625,39 @@ if user.password != password:
 ],
     performance: {
       fixora: {
-        score: 30,
+        score: 17,
         total: 30,
         falsePositives: 0,
-        duplicates: 0,
-        description: 'Perfect score. As the calibration ground truth, Fixora successfully identified all 30 vulnerabilities across Easy, Medium, and Hard tiers, including complex logic bypasses and HTTP verb traps.'
+        description: 'Found 17 architectural vulnerabilities (8 Easy, 4 Medium, 5 Hard) including SQLi, SSRF, XSS, and Blind Command Injection. However, it completely missed 13 deep business logic flaws (IDORs, Mass Assignment, Timing Attacks, Race Conditions) since it struggles with contextual state.'
       },
       vanillaSemgrep: {
         score: 10,
         total: 30,
         falsePositives: 1,
-        duplicates: 16,
         description: 'Failed completely on contextual flaws. Even with Pro rules, Semgrep only found 10 traditional vulnerabilities (SQLi, SSRF, XSS) and missed 20 complex logic flaws. Generated massive noise with 16 duplicate overlapping findings.'
       },
       semgrepAi: {
-        score: 15,
+        score: 8,
         total: 30,
-        falsePositives: 1,
-        duplicates: 19,
-        description: 'The AI engine made a massive leap, successfully detecting 5 complex logic flaws (including Sneaky IDOR and Logic Bypasses). However, it still missed 15 highly contextual flaws like Race Conditions and HTTP Verb Traps.'
+        falsePositives: 0,
+        description: 'Caught 8 logic/auth flaws (Missing Auth, IDORs, Timing Attack, Logic Bypass). But its classifications are messy (labeled SQLi/NoSQLi as AUTHZ). Blind to 73% of the repo, scoring 0/10 on Frontend and 1/10 on Easy.'
       }
     },
     missedLogs: `=== FIXORA - FALSE POSITIVES ===
 - None!
 
-=== FIXORA - MISSED VULNERABILITIES (0) ===
-- None! (Perfect Detection)
-
-=== VANILLA SEMGREP - FALSE POSITIVES (1) ===
-1. run-shell-injection (.github/workflows) - Out of scope
+=== FIXORA - MISSED VULNERABILITIES (13) ===
+- [MEDIUM] IDOR / Broken Access Control
+- [MEDIUM] Mass Assignment
+- [MEDIUM] SSRF
+- [MEDIUM] XXE
+- [MEDIUM] ReDoS
+- [HARD] Sneaky IDOR
+- [HARD] Timing Attack
+- [HARD] Logic Bypass
+- [HARD] Server-Side Attribute Override
+- [EASY] Hardcoded Secret (AWS Key)
+- [EASY] Hardcoded Secret (JWT_SECRET)
 
 === VANILLA SEMGREP - MISSED VULNERABILITIES (20) ===
 - [EASY] Hardcoded Secret (JWT_SECRET)
@@ -679,25 +681,23 @@ if user.password != password:
 - [HARD] NoSQL Injection
 - [HARD] Misplaced / Ineffective Auth
 
-=== SEMGREP AI - FALSE POSITIVES (1) ===
-1. run-shell-injection (.github/workflows)
-
-=== SEMGREP AI - MISSED VULNERABILITIES (15) ===
-- [EASY] Hardcoded Secret (JWT_SECRET)
+=== SEMGREP AI - MISSED VULNERABILITIES (22) ===
+- All Frontend JSX flaws (AWS Secret, dangerouslySetInnerHTML, location.hash XSS, UI De-Sync, State Race, Unhandled Promises)
+- [EASY] SQL Injection (easy.py)
+- [EASY] Command Injection (os.system)
+- [EASY] Path Traversal (open)
 - [EASY] Plaintext Password Comparison
-- [EASY] Hardcoded Secret (AWS Key)
-- [MEDIUM] Mass Assignment
+- [EASY] Insecure Deserialization
+- [EASY] Debug Mode Enabled
+- [EASY] Hardcoded Secret (JWT)
+- [MEDIUM] SSRF
 - [MEDIUM] Weak Cryptography
 - [MEDIUM] ReDoS
 - [MEDIUM] XXE
-- [MEDIUM] Optimistic UI De-Sync
-- [MEDIUM] Improper LocalStorage Usage
-- [MEDIUM] State Race Condition
-- [MEDIUM] Unhandled Promise Rejection
-- [HARD] HTTP Verb Bias Trap
-- [HARD] Timing Attack
+- [HARD] Second-Order SQLi
 - [HARD] Server-Side Attribute Override
-- [HARD] NoSQL Injection`
+- [HARD] Blind Command Injection
+- [HARD] Misplaced / Ineffective Auth`
   }
 };
 
@@ -870,12 +870,7 @@ const Results = () => {
                       {data.performance.fixora.falsePositives}
                     </Badge>
                   </div>
-                  <div className="mt-2 flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Duplicates</span>
-                    <Badge variant={data.performance.fixora.duplicates === 0 ? "outline" : "secondary"} className="font-mono bg-zinc-800 text-zinc-100 border-zinc-700">
-                      {data.performance.fixora.duplicates}
-                    </Badge>
-                  </div>
+                  
                 </CardContent>
               </Card>
 
@@ -907,12 +902,7 @@ const Results = () => {
                       {data.performance.vanillaSemgrep.falsePositives}
                     </Badge>
                   </div>
-                  <div className="mt-2 flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Duplicates</span>
-                    <Badge variant={data.performance.vanillaSemgrep.duplicates === 0 ? "outline" : "secondary"} className="font-mono bg-zinc-800 text-zinc-100 border-zinc-700">
-                      {data.performance.vanillaSemgrep.duplicates}
-                    </Badge>
-                  </div>
+                  
                 </CardContent>
               </Card>
 
@@ -944,12 +934,7 @@ const Results = () => {
                       {data.performance.semgrepAi.falsePositives}
                     </Badge>
                   </div>
-                  <div className="mt-2 flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Duplicates</span>
-                    <Badge variant={data.performance.semgrepAi.duplicates === 0 ? "outline" : "secondary"} className="font-mono bg-zinc-800 text-zinc-100 border-zinc-700">
-                      {data.performance.semgrepAi.duplicates}
-                    </Badge>
-                  </div>
+                  
                 </CardContent>
               </Card>
             </div>
