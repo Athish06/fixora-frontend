@@ -501,6 +501,7 @@ if user.password != password:
             whatIsIt: "A business logic flaw where a `fetch` is fired and the local UI state is updated *without* checking if the network request actually succeeded (`res.ok`).",
             file: "components.jsx",
             line: "N/A",
+            // eslint-disable-next-line no-template-curly-in-string
             codeSnippet: "const handleDelete = (id) => {\n  setItems(items.filter(i => i.id !== id));\n  fetch(`/api/items/${id}`, { method: \"DELETE\" }); // Fails silently if network errors\n};",
             payload: "N/A (Business Logic Flaw)",
             result: "User believes an action succeeded when it failed, leading to data inconsistency and trust issues."
@@ -519,6 +520,7 @@ if user.password != password:
             whatIsIt: "Rapidly typing in a search bar fires multiple requests without an `AbortController`. If a slow request resolves after a fast one, the UI shows stale data.",
             file: "components.jsx",
             line: "N/A",
+            // eslint-disable-next-line no-template-curly-in-string
             codeSnippet: "const search = async (query) => {\n  const res = await fetch(`/api/search?q=${query}`);\n  setResults(await res.json()); // No AbortController\n};",
             payload: "Type quickly: \"a\" (slow response), \"ab\" (fast response).",
             result: "Stale data overwrites fresh data, causing incorrect UI rendering."
