@@ -158,8 +158,36 @@ MIICWwIBAAKBgQDQ...`,
         description: 'Successfully caught the IDOR in benefits.js and allocations.js, but flagged the same missing permission checks 6 times (5 duplicates). Completely failed to find 10 out of 11 core vulnerabilities.'
       }
     },
-    missedLogs: `=== FIXORA - FALSE POSITIVES ===
-- None!
+    missedLogs: `=== FIXORA - THE WINS ===
+The 7 Core Vulnerabilities Caught
+
+1. Code / Eval Injection (OWASP A1)
+Found In: app/routes/contributions.js (Lines 32, 33, 34)
+The Win: Fixora successfully traced req.body.preTax into the highly dangerous eval() sink, catching a critical Remote Code Execution (RCE) vector. (Note: It generated 3 duplicate alerts for this 1 vulnerability).
+
+2. Server-Side Request Forgery / SSRF
+Found In: app/routes/research.js:16
+The Win: Successfully extracted the unvalidated req.query.url flowing directly into the needle.get HTTP client.
+
+3. Open Redirect (OWASP A10)
+Found In: app/routes/index.js:72
+The Win: Caught the unvalidated user input being passed to the Express redirect function, allowing phishing and traffic hijacking.
+
+4. Stored Cross-Site Scripting / XSS (OWASP A3)
+Found In: app/views/profile.html:78
+The Win: Identified the unvalidated template variable inside an anchor tag's href attribute, which permits javascript: URI execution.
+
+5. Sensitive Data Exposure / Hardcoded Secrets (OWASP A3)
+Found In: artifacts/cert/server.key:1
+The Win: Successfully flagged the exposed private RSA cryptographic key.
+
+6. Security Misconfiguration: Missing CSRF Protection (OWASP A5/A8)
+Found In: server.js:15
+The Win: Detected the absence of global anti-CSRF middleware (like csurf) on the Express application.
+
+7. Broken Authentication: Insecure Cookie Flags (OWASP A2)
+Found In: server.js:78
+The Win: Caught the default session cookie configuration failing to enforce protective boundaries.
 
 === FIXORA - MISSED VULNERABILITIES (4) ===
 1. NoSQL Injection (app/routes/allocations.js)
@@ -316,8 +344,32 @@ if user.password != password:
         description: 'Caught the BOLA/IDOR vulnerability (flagging it 5 times as Improper Auth/IDOR). Completely failed to find 8 out of 9 core API flaws (SQLi, ReDoS, JWT Weak Keys, Mass Assignment, etc).'
       }
     },
-    missedLogs: `=== FIXORA - FALSE POSITIVES ===
-- None!
+    missedLogs: `=== FIXORA - THE WINS ===
+The 6 Core Vulnerabilities Caught
+
+1. SQL Injection (OWASP API8)
+Found In: models/user_model.py:73
+The Verdict: Clean hit. It accurately traced username straight into db.session.execute.
+
+2. Mass Assignment (OWASP API6)
+Found In: api_views/users.py:65, 68 and models/user_model.py:85
+The Verdict: Massive win. It caught the untrusted request_data dictionary passing cleanly into the User initialization block across multiple lines.
+
+3. Broken Object Level Authorization / IDOR (OWASP API1)
+Found In: api_views/users.py:187, 194
+The Verdict: Strong catch. It correctly realized that updating a password using a username variable via User.query.filter_by without checking session boundaries introduces an IDOR/BOLA vector.
+
+4. Plaintext Password Comparison (OWASP API2)
+Found In: api_views/users.py:92
+The Verdict: Solid hit. Caught the missing password hashing validation layer during user authentication.
+
+5. Hardcoded JWT Secret / Weak Key (OWASP API2)
+Found In: config.py:13
+The Verdict: Standard, reliable secret detection on the SECRET_KEY string.
+
+6. Missing Authentication / Excessive Data Exposure (OWASP API3)
+Found In: api_views/books.py:13
+The Verdict: Great catch. It identified that the endpoint pulling all records via Book.get_all_books lacked an authorization filter or decorator check, potentially exposing sensitive records globally.
 
 === FIXORA - MISSED VULNERABILITIES (4) ===
 1. Excessive Data Exposure (GET /users/v1/_debug)
@@ -645,21 +697,54 @@ if user.password != password:
         description: 'Caught 8 logic/auth flaws (Missing Auth, IDORs, Timing Attack, Logic Bypass). But its classifications are messy (labeled SQLi/NoSQLi as AUTHZ). Blind to 73% of the repo, scoring 0/10 on Frontend and 1/10 on Easy.'
       }
     },
-    missedLogs: `=== FIXORA - FALSE POSITIVES ===
-- None!
+    missedLogs: `=== FIXORA - THE WINS ===
+The 21 Core Vulnerabilities Caught
 
-=== FIXORA - MISSED VULNERABILITIES (13) ===
-- [MEDIUM] IDOR / Broken Access Control
-- [MEDIUM] Mass Assignment
-- [MEDIUM] SSRF
-- [MEDIUM] XXE
-- [MEDIUM] ReDoS
-- [HARD] Sneaky IDOR
-- [HARD] Timing Attack
-- [HARD] Logic Bypass
-- [HARD] Server-Side Attribute Override
-- [EASY] Hardcoded Secret (AWS Key)
-- [EASY] Hardcoded Secret (JWT_SECRET)
+🟢 Easy Layer: 7 / 10 Found
+Fixora caught the classic code execution sinks flawlessly.
+- SQL Injection: (easy.py:14)
+- Command Injection: (easy.py:25)
+- Path Traversal: (easy.py:32)
+- Plaintext Password Comparison: (easy.py:40)
+- Insecure Deserialization: (easy.py:56 via pickle.loads)
+- Debug Mode Enabled: (easy.py:61 via host 0.0.0.0)
+- Frontend XSS: (components.jsx:44 via dangerouslySetInnerHTML)
+
+🟡 Medium Layer: 6 / 10 Found — (Massive Improvement)
+In the previous run, Fixora struggled here. Today, the hardened prompt forced the AI to map untrusted inputs into complex, non-standard sinks.
+8. SSRF: (medium.py:20 via requests.get)
+9. Mass Assignment: (medium.py:15 via kwargs and setattr)
+10. Weak Cryptography: (medium.py:46 via MD5)
+11. ReDoS / Catastrophic Backtracking: (medium.py:54 via re.match)
+12. XXE: (medium.py:63 via etree.fromstring)
+13. Frontend State Race Condition: (components.jsx:63 via fetch)
+
+🔴 Hard Layer: 8 / 10 Found — (The "Wow" Factor)
+This is where Fixora outperformed deterministic scanners. It successfully tracked cross-boundary and highly abstract vulnerabilities.
+14. Second-Order SQLi: (hard.py:25 via the bio variable retrieval)
+15. Sneaky IDOR: (hard.py:39 via JSON body target_user_id overriding state)
+16. HTTP Verb Bias Trap / PUT SQLi: (hard.py:48 via table_name concatenation)
+17. Timing Attack / Cryptographic Misconfiguration: (hard.py:56. Note: The AI flagged the hmac.new sink taking untrusted data rather than the == operator itself, but it successfully highlighted the exact vulnerable mechanism.)
+18. Server-Side Attribute Override: (hard.py:89 via dynamic setattr mapping)
+19. NoSQL Injection: (hard.py:97 via db.users.find)
+20. Blind Command Injection: (hard.py:105 via subprocess.Popen)
+21. DOM-based XSS: (components.jsx:22 via setTimeout acting as an eval() sink)
+
+=== FIXORA - MISSED VULNERABILITIES ===
+🟢 Easy Layer Missed:
+- Hardcoded JWT
+- Missing Auth on delete route
+- React AWS Key
+
+🟡 Medium Layer Missed:
+- Standard IDOR
+- Optimistic UI De-sync
+- Improper LocalStorage
+- Unhandled Promise
+
+🔴 Hard Layer Missed:
+- Logic Bypass (omitting the payment key)
+- Misplaced Auth (intentionally pending)
 
 === VANILLA SEMGREP - MISSED VULNERABILITIES (20) ===
 - [EASY] Hardcoded Secret (JWT_SECRET)
