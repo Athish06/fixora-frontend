@@ -142,8 +142,8 @@ MIICWwIBAAKBgQDQ...`,
       fixora: {
         score: 7,
         total: 11,
-        falsePositives: 0,
-        description: 'Successfully found 7 critical vulnerability types (Eval, SSRF, XSS, Open Redirect, CSRF, Insecure Sessions, Hardcoded Secrets). Zero false positives. Missed highly contextual logic flaws (NoSQLi, IDOR, Cookie Deserialization) and SCA.'
+        falsePositives: 3,
+        description: 'Successfully found 7 critical vulnerability types (Eval, SSRF, XSS, Open Redirect, CSRF, Insecure Sessions, Hardcoded Secrets). Generated 3 false positives. Missed highly contextual logic flaws (NoSQLi, IDOR, Cookie Deserialization) and SCA.'
       },
       vanillaSemgrep: {
         score: 7,
@@ -158,8 +158,10 @@ MIICWwIBAAKBgQDQ...`,
         description: 'Successfully caught the IDOR in benefits.js and allocations.js, but flagged the same missing permission checks 6 times (5 duplicates). Completely failed to find 10 out of 11 core vulnerabilities.'
       }
     },
-    missedLogs: `=== FIXORA - FALSE POSITIVES ===
-- None!
+    missedLogs: `=== FIXORA - FALSE POSITIVES (3) ===
+1. artifacts/db-reset.js:19 - Dummy environment seeding script
+2. artifacts/db-reset.js:28 - Dummy environment seeding script
+3. artifacts/db-reset.js:36 - Dummy environment seeding script
 
 === FIXORA - MISSED VULNERABILITIES (4) ===
 1. NoSQL Injection (app/routes/allocations.js)
@@ -300,8 +302,8 @@ if user.password != password:
       fixora: {
         score: 6,
         total: 9,
-        falsePositives: 0,
-        description: 'Elite detection. Found 6 core API logic flaws: SQL Injection, Mass Assignment, IDOR, Plaintext Password Comparison, Weak JWT Keys, and Missing Auth. Missed ReDoS, Unauthorized Password Change, and Rate Limiting/Enumeration.'
+        falsePositives: 1,
+        description: 'Elite detection. Found 6 core API logic flaws: SQL Injection, Mass Assignment, IDOR, Plaintext Password Comparison, Weak JWT Keys, and Missing Auth. Generated 1 false positive. Missed ReDoS, Unauthorized Password Change, and Rate Limiting/Enumeration.'
       },
       vanillaSemgrep: {
         score: 1,
@@ -316,8 +318,8 @@ if user.password != password:
         description: 'Caught the BOLA/IDOR vulnerability (flagging it 5 times as Improper Auth/IDOR). Completely failed to find 8 out of 9 core API flaws (SQLi, ReDoS, JWT Weak Keys, Mass Assignment, etc).'
       }
     },
-    missedLogs: `=== FIXORA - FALSE POSITIVES ===
-- None!
+    missedLogs: `=== FIXORA - FALSE POSITIVES (1) ===
+1. openapi_specs/openapi3.yml:193 - Dummy example token for documentation
 
 === FIXORA - MISSED VULNERABILITIES (3) ===
 1. Regular Expression Denial of Service (ReDoS)
